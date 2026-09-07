@@ -1,5 +1,4 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Slider } from "@/components/ui/slider";
 import { RunOptimizationButton } from "@/components/optimization/RunOptimizationButton";
 import { DecisionLog, DecisionLogProps } from "@/components/optimization/DecisionLog";
 import prisma from "@/lib/prisma";
@@ -77,29 +76,18 @@ export default async function SchedulesPage() {
                 </div>
               </div>
 
-              <div className="space-y-6 pt-4 border-t">
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <label className="text-sm font-medium leading-none">Cost Reduction</label>
-                    <span className="text-sm text-muted-foreground">High</span>
-                  </div>
-                  <Slider defaultValue={[80]} max={100} step={1} disabled />
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-3 bg-muted/30 rounded-md">
+                  <span className="text-sm font-medium">Cost Reduction</span>
+                  <span className="text-sm font-semibold text-emerald-600">High (optimizer priority)</span>
                 </div>
-                
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <label className="text-sm font-medium leading-none">Peak Reduction</label>
-                    <span className="text-sm text-muted-foreground">Medium</span>
-                  </div>
-                  <Slider defaultValue={[50]} max={100} step={1} disabled />
+                <div className="flex justify-between items-center p-3 bg-muted/30 rounded-md">
+                  <span className="text-sm font-medium">Peak Reduction</span>
+                  <span className="text-sm font-semibold text-amber-600">Active (power limit enforced)</span>
                 </div>
-
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <label className="text-sm font-medium leading-none">Comfort Protection</label>
-                    <span className="text-sm text-muted-foreground">High</span>
-                  </div>
-                  <Slider defaultValue={[75]} max={100} step={1} disabled />
+                <div className="flex justify-between items-center p-3 bg-muted/30 rounded-md">
+                  <span className="text-sm font-medium">Comfort Protection</span>
+                  <span className="text-sm font-semibold text-blue-600">High (windows respected)</span>
                 </div>
               </div>
 

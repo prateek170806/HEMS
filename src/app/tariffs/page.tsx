@@ -1,12 +1,23 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import prisma from "@/lib/prisma";
+import { EditTariffDialog } from "@/components/tariffs/EditTariffDialog";
 
 export default async function TariffsPage() {
   const tariff = await prisma.tariff.findFirst({
     include: { periods: { orderBy: { startTime: 'asc' } } }
   });
+
+  if (!tariff) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Tariff Management</h2>
+          <p className="text-muted-foreground">No tariff configured. Run the Demo Scenario from the Overview page.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -15,31 +26,30 @@ export default async function TariffsPage() {
           <h2 className="text-2xl font-bold tracking-tight">Tariff Management</h2>
           <p className="text-muted-foreground">Configure your Time-of-Use electricity pricing.</p>
         </div>
-        <Button>Edit Tariff</Button>
+        <EditTariffDialog tariff={tariff} />
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Current Tariff: {tariff?.name}</CardTitle>
-          <CardDescription>24-hour timeline</CardDescription>
+          <CardDescription>24-hour timeline — hover to see prices</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-8">
             <div className="relative h-24 w-full rounded-md border overflow-hidden flex">
-              {/* Visual 24h timeline representation */}
-              {tariff?.periods.map((period, i) => {
+              {tariff?.periods.map((period) => {
                 const startH = parseInt(period.startTime.split(':')[0]);
                 const endH = parseInt(period.endTime.split(':')[0]) || 24;
                 const widthPercent = ((endH - startH) / 24) * 100;
-                
-                let bgColor = "bg-green-100 dark:bg-green-900/30"; // off_peak
+
+                let bgColor = "bg-green-100 dark:bg-green-900/30";
                 if (period.type === 'normal') bgColor = "bg-blue-100 dark:bg-blue-900/30";
                 if (period.type === 'peak') bgColor = "bg-red-100 dark:bg-red-900/30";
                 if (period.type === 'solar') bgColor = "bg-yellow-100 dark:bg-yellow-900/30";
 
                 return (
-                  <div 
-                    key={period.id} 
+                  <div
+                    key={period.id}
                     style={{ width: `${widthPercent}%` }}
                     className={`${bgColor} h-full border-r last:border-r-0 relative group flex flex-col justify-end p-2`}
                   >

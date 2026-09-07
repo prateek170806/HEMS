@@ -29,7 +29,7 @@ export default async function AnalyticsPage() {
   const optTime = Date.now() - startOpt;
 
   // We need to convert ScheduleResult[] to Schedule[] to pass to simulateDay
-  const mapToSchedule = (s: { applianceId: string, startTime: Date, endTime: Date }) => ({
+  const mapToSchedule = (s: { applianceId: string, startTime: Date, endTime: Date, reason?: string | null, explanation?: string, cost?: number | null, estimatedCost?: number | null }) => ({
     applianceId: s.applianceId,
     startTime: s.startTime,
     endTime: s.endTime,
@@ -44,14 +44,11 @@ export default async function AnalyticsPage() {
   });
 
   // Run simulation for each to get peak demand and total cost
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const simBaseline = simulateDay(today, household, appliances, baselineSchedules.map(mapToSchedule) as any[], 1.0, 1.0);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const simRuleBased = simulateDay(today, household, appliances, ruleBasedSchedules.map(mapToSchedule) as any[], 1.0, 1.0);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const simOpt = simulateDay(today, household, appliances, optSchedules.map(mapToSchedule) as any[], 1.0, 1.0);
+  const simBaseline = simulateDay(today, household, appliances, baselineSchedules.map(mapToSchedule), 1.0, 1.0);
+  const simRuleBased = simulateDay(today, household, appliances, ruleBasedSchedules.map(mapToSchedule), 1.0, 1.0);
+  const simOpt = simulateDay(today, household, appliances, optSchedules.map(mapToSchedule), 1.0, 1.0);
 
-  const calculateMetrics = (simResults: any[], schedules: any[]) => {
+  const calculateMetrics = (simResults: { homeDemandKw: number, gridImportKw: number, gridExportKw: number, solarKw: number, timestamp: Date }[]) => {
     let cost = 0;
     let peak = 0;
     let solarSelfConsum = 0;
@@ -82,9 +79,9 @@ export default async function AnalyticsPage() {
     };
   };
 
-  const metricsBaseline = calculateMetrics(simBaseline, baselineSchedules);
-  const metricsRuleBased = calculateMetrics(simRuleBased, ruleBasedSchedules);
-  const metricsOpt = calculateMetrics(simOpt, optSchedules);
+  const metricsBaseline = calculateMetrics(simBaseline);
+  const metricsRuleBased = calculateMetrics(simRuleBased);
+  const metricsOpt = calculateMetrics(simOpt);
 
   const costSavingsPct = metricsBaseline.cost > 0 ? ((metricsBaseline.cost - metricsOpt.cost) / metricsBaseline.cost) * 100 : 0;
   const peakReductionPct = metricsBaseline.peak > 0 ? ((metricsBaseline.peak - metricsOpt.peak) / metricsBaseline.peak) * 100 : 0;
