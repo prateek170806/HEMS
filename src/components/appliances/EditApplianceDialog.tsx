@@ -69,8 +69,8 @@ export function EditApplianceDialog({ appliance }: { appliance: Appliance }) {
 
       setOpen(false);
       router.refresh();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
