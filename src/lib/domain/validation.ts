@@ -50,7 +50,7 @@ export function validateSchedule(
       const [eH, eM] = appliance.earliestStart.split(':').map(Number);
       const earliest = eH * 60 + eM;
 
-      let [lH, lM] = appliance.latestFinish.split(':').map(Number);
+      const [lH, lM] = appliance.latestFinish.split(':').map(Number);
       let latest = lH * 60 + lM;
       if (latest === 0) latest = 24 * 60; // 00:00 end of day
 

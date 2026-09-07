@@ -13,7 +13,7 @@ export function getCurrentTariffPeriod(periods: TariffPeriod[], time: Date): Tar
     const [startH, startM] = period.startTime.split(':').map(Number);
     const [endH, endM] = period.endTime.split(':').map(Number);
     
-    let startTotal = startH * 60 + startM;
+    const startTotal = startH * 60 + startM;
     let endTotal = endH * 60 + endM;
 
     // Handle midnight wrap around

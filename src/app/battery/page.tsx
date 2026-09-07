@@ -70,11 +70,11 @@ export default function BatteryPage() {
                 <span className="font-medium">20%</span>
               </li>
               <li className="flex justify-between border-b pb-2">
-                <span className="text-muted-foreground">Today's Charge</span>
+                <span className="text-muted-foreground">Today&apos;s Charge</span>
                 <span className="font-medium">4.2 kWh</span>
               </li>
               <li className="flex justify-between pb-2">
-                <span className="text-muted-foreground">Today's Discharge</span>
+                <span className="text-muted-foreground">Today&apos;s Discharge</span>
                 <span className="font-medium">1.8 kWh</span>
               </li>
             </ul>

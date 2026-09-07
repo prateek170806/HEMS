@@ -48,7 +48,7 @@ export default async function Home() {
         {/* Today's Energy & Cost */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Cost</CardTitle>
+            <CardTitle className="text-sm font-medium">Today&apos;s Cost</CardTitle>
             <span className="text-lg">₹</span>
           </CardHeader>
           <CardContent>

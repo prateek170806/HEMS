@@ -31,7 +31,7 @@ export default function SolarPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Today's Generation</CardTitle>
+            <CardTitle className="text-sm font-medium">Today&apos;s Generation</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{todayGen} kWh</div>
