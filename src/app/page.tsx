@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { format } from "date-fns";
 import { simulateDay } from "@/lib/simulation/engine";
 import { getPriceForTime } from "@/lib/domain/tariff";
+import { DemoButton } from "@/components/demo/DemoButton";
 
 export default async function Home() {
   const household = await prisma.household.findFirst();
@@ -63,9 +64,12 @@ export default async function Home() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Overview</h2>
-        <p className="text-muted-foreground">Monitor and control your smart home energy.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Overview</h2>
+          <p className="text-muted-foreground">Monitor and control your smart home energy.</p>
+        </div>
+        <DemoButton />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

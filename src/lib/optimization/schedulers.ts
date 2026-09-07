@@ -61,11 +61,11 @@ export function generateRuleBasedSchedule(
       // Find the first non-peak slot in the allowed window
       const windowStart = parseTime(date, app.earliestStart || '00:00');
       let windowEnd = parseTime(date, app.latestFinish || '23:59');
-      if (app.latestFinish === '00:00') windowEnd = addMinutes(windowEnd, 24*60); // next midnight
+      if (windowEnd <= windowStart) windowEnd = addMinutes(windowEnd, 24*60);
 
       // Check slots every 30 mins
       let current = windowStart;
-      while (isBefore(addMinutes(current, app.minRuntime * 60), windowEnd)) {
+      while (isBefore(addMinutes(current, app.minRuntime * 60), windowEnd) || current.getTime() + app.minRuntime*60000 === windowEnd.getTime()) {
         const period = getPriceForTime(periods, current);
         // Avoid peak (assuming peak is the highest price)
         const isPeak = period >= Math.max(...periods.map(p => p.pricePerKwh));
@@ -125,7 +125,7 @@ export function optimizeSchedule(
 
     const windowStart = parseTime(date, app.earliestStart || '00:00');
     let windowEnd = parseTime(date, app.latestFinish || '23:59');
-    if (app.latestFinish === '00:00') windowEnd = addMinutes(parseTime(date, '00:00'), 24*60);
+    if (windowEnd <= windowStart) windowEnd = addMinutes(windowEnd, 24*60);
 
     const requiredSlots = Math.ceil((app.minRuntime * 60) / 15);
     
@@ -133,7 +133,8 @@ export function optimizeSchedule(
     let minCost = Infinity;
 
     const startSlotIdx = getSlotIndex(windowStart);
-    const endSlotIdx = getSlotIndex(windowEnd);
+    let endSlotIdx = getSlotIndex(windowEnd);
+    if (endSlotIdx <= startSlotIdx) endSlotIdx += 96; // Wrap for next day
 
     // Slide window to find cheapest valid slot
     for (let i = startSlotIdx; i <= endSlotIdx - requiredSlots; i++) {
@@ -141,11 +142,12 @@ export function optimizeSchedule(
       let currentCost = 0;
 
       for (let j = 0; j < requiredSlots; j++) {
-        const slotTime = getSlotTime(date, i + j);
+        const slotIndex = (i + j) % 96; // Circular profile for overnight
+        const slotTime = getSlotTime(date, slotIndex);
         const price = getPriceForTime(periods, slotTime);
         currentCost += price * (app.ratedPower * 0.25); // 15 mins = 0.25h
 
-        if (powerProfile[i + j] + app.ratedPower > householdPowerLimitKw) {
+        if (powerProfile[slotIndex] + app.ratedPower > householdPowerLimitKw) {
           valid = false;
           break;
         }
@@ -160,16 +162,26 @@ export function optimizeSchedule(
     if (bestStartSlot !== -1) {
       // Commit to schedule
       for (let j = 0; j < requiredSlots; j++) {
-        powerProfile[bestStartSlot + j] += app.ratedPower;
+        const slotIndex = (bestStartSlot + j) % 96;
+        powerProfile[slotIndex] += app.ratedPower;
       }
       
-      const startTime = getSlotTime(date, bestStartSlot);
+      const startTime = getSlotTime(date, bestStartSlot % 96);
+      
+      let explanation = `Optimized schedule: Placed at ${format(startTime, 'HH:mm')}.`;
+      if (bestStartSlot !== startSlotIdx) {
+        const originalPrice = getPriceForTime(periods, windowStart);
+        explanation = `${app.name} shifted from ${format(windowStart, 'HH:mm')} to ${format(startTime, 'HH:mm')}. Reason: avoided ₹${originalPrice.toFixed(2)}/kWh peak tariff while satisfying the overnight/operating window requirement.`;
+      } else {
+        explanation = `${app.name} kept at ${format(startTime, 'HH:mm')}. Reason: Preferred time is already optimal or constrained by household power limits.`;
+      }
+
       results.push({
         applianceId: app.id,
         startTime,
         endTime: addMinutes(startTime, requiredSlots * 15),
         cost: minCost,
-        explanation: `Optimized schedule: Placed at ${format(startTime, 'HH:mm')} because it was the cheapest available continuous window (Est: ₹${minCost.toFixed(2)}) without exceeding the ${householdPowerLimitKw}kW limit.`
+        explanation
       });
     } else {
       // Infeasible for this appliance (fallback to earliest possible ignoring limit to ensure execution, or mark infeasible)

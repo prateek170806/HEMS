@@ -114,3 +114,103 @@ export async function overrideScheduleAction(applianceId: string) {
   
   return { success: true };
 }
+
+export async function runDemoScenarioAction() {
+  console.log("Running demo scenario reset...");
+
+  // Clean up
+  await prisma.schedule.deleteMany();
+  await prisma.optimizationRun.deleteMany();
+  await prisma.meterReading.deleteMany();
+  await prisma.tariffPeriod.deleteMany();
+  await prisma.tariff.deleteMany();
+  await prisma.appliance.deleteMany();
+  await prisma.household.deleteMany();
+
+  // Create Household
+  const household = await prisma.household.create({
+    data: {
+      name: 'Green Valley Residence',
+      timezone: 'Asia/Kolkata',
+      currency: 'INR',
+      powerLimitKw: 5.5,
+      batteryReserve: 20,
+      optimizationMode: 'economic',
+    },
+  });
+
+  // Create Appliances
+  const appliances = [
+    {
+      name: 'Washing Machine',
+      category: 'washing_machine',
+      ratedPower: 0.5,
+      flexibility: 'shiftable',
+      minRuntime: 2,
+      maxRuntime: 2,
+      earliestStart: '18:00',
+      latestFinish: '23:00',
+      priority: 'medium',
+      householdId: household.id,
+      automationEnabled: true,
+    },
+    {
+      name: 'Water Heater',
+      category: 'water_heater',
+      ratedPower: 2.0,
+      flexibility: 'shiftable',
+      minRuntime: 1,
+      maxRuntime: 1,
+      earliestStart: '17:00',
+      latestFinish: '20:00',
+      priority: 'high',
+      householdId: household.id,
+      automationEnabled: true,
+    },
+    {
+      name: 'EV Charger',
+      category: 'ev',
+      ratedPower: 3.3,
+      flexibility: 'shiftable',
+      minRuntime: 4,
+      maxRuntime: 8,
+      earliestStart: '18:00',
+      latestFinish: '08:00',
+      priority: 'high',
+      householdId: household.id,
+      automationEnabled: true,
+    }
+  ];
+
+  for (const app of appliances) {
+    await prisma.appliance.create({ data: app });
+  }
+
+  // Create Tariff
+  await prisma.tariff.create({
+    data: {
+      name: 'Demo TOU Tariff',
+      isActive: true,
+      householdId: household.id,
+      periods: {
+        create: [
+          { name: 'Night Off-Peak', startTime: '00:00', endTime: '06:00', pricePerKwh: 4.0, type: 'off_peak' },
+          { name: 'Morning Normal', startTime: '06:00', endTime: '10:00', pricePerKwh: 6.0, type: 'normal' },
+          { name: 'Solar Hours', startTime: '10:00', endTime: '17:00', pricePerKwh: 4.5, type: 'solar' },
+          { name: 'Evening Peak', startTime: '17:00', endTime: '22:00', pricePerKwh: 12.0, type: 'peak' },
+          { name: 'Night Off-Peak 2', startTime: '22:00', endTime: '23:59', pricePerKwh: 4.0, type: 'off_peak' },
+        ]
+      }
+    }
+  });
+
+  // Run the optimizer immediately for the demo
+  await runOptimizationAction();
+
+  revalidatePath("/");
+  revalidatePath("/appliances");
+  revalidatePath("/analytics");
+  revalidatePath("/schedules");
+  
+  return { success: true };
+}

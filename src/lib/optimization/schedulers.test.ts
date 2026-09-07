@@ -93,7 +93,7 @@ describe('Schedulers Logic', () => {
       // The heuristic checks every 15-minute slot. It should pick 21:00
       // since 22:00 exceeds the 23:59 latestFinish constraint (runs until 24:00)
       expect(results[0].startTime.getHours()).toBe(21);
-      expect(results[0].explanation).toContain('Optimized schedule: Placed at');
+      expect(results[0].explanation).toContain('shifted from');
     });
 
     it('should fallback if power limit is exceeded', () => {
