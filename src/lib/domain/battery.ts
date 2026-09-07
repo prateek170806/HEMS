@@ -13,6 +13,10 @@ export function calculateBatterySOC(
   dischargeKw: number,
   durationHours: number
 ): number {
+  if (chargeKw > 0 && dischargeKw > 0) {
+    throw new Error("Invalid battery state: cannot simultaneously charge and discharge");
+  }
+
   const currentEnergyKwh = (currentState.socPercentage / 100) * currentState.capacityKwh;
   
   // Apply efficiency only on charging to simplify (round-trip efficiency)

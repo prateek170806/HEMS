@@ -1,10 +1,53 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { RunOptimizationButton } from "@/components/optimization/RunOptimizationButton";
+import { DecisionLog, DecisionLogProps } from "@/components/optimization/DecisionLog";
 import prisma from "@/lib/prisma";
+import { getPriceForTime } from "@/lib/domain/tariff";
+import { setHours, setMinutes } from "date-fns";
+
+function parseTime(baseDate: Date, timeStr: string): Date {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return setMinutes(setHours(baseDate, hours), minutes);
+}
 
 export default async function SchedulesPage() {
   const household = await prisma.household.findFirst();
+  if (!household) return <div>No household configured.</div>;
+
+  const tariff = await prisma.tariff.findFirst({
+    where: { householdId: household.id, isActive: true },
+    include: { periods: true }
+  });
+
+  const schedules = await prisma.schedule.findMany({
+    where: { householdId: household.id },
+    include: { appliance: true },
+    orderBy: { startTime: 'asc' }
+  });
+
+  const today = new Date();
+
+  const decisionLogs: DecisionLogProps['logs'] = schedules.map(s => {
+    const baselineTimeStr = s.appliance.earliestStart || '00:00';
+    const baselineDate = parseTime(today, baselineTimeStr);
+    
+    let baselineCost = 0;
+    if (tariff) {
+      baselineCost = getPriceForTime(tariff.periods, baselineDate) * s.appliance.minRuntime * s.appliance.ratedPower;
+    }
+
+    return {
+      scheduleId: s.id,
+      applianceName: s.appliance.name,
+      baselineTime: baselineTimeStr,
+      optimizedTime: s.startTime,
+      baselineCost: baselineCost,
+      optimizedCost: s.estimatedCost || 0,
+      reason: s.reason || "No explanation recorded.",
+      isOverridden: s.status === "overridden"
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -18,85 +61,75 @@ export default async function SchedulesPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Optimization Strategy</CardTitle>
-            <CardDescription>Configure how HEMS schedules your flexible loads.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Mode</span>
-                <span className="bg-primary/10 text-primary px-3 py-1 rounded-md text-sm font-medium capitalize">
-                  {household?.optimizationMode || "Economic"}
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-6 pt-4 border-t">
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <label className="text-sm font-medium leading-none">Cost Reduction</label>
-                  <span className="text-sm text-muted-foreground">High</span>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Optimization Strategy</CardTitle>
+              <CardDescription>Configure how HEMS schedules your flexible loads.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Mode</span>
+                  <span className="bg-primary/10 text-primary px-3 py-1 rounded-md text-sm font-medium capitalize">
+                    {household.optimizationMode || "Economic"}
+                  </span>
                 </div>
-                <Slider defaultValue={[80]} max={100} step={1} disabled />
               </div>
-              
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <label className="text-sm font-medium leading-none">Peak Reduction</label>
-                  <span className="text-sm text-muted-foreground">Medium</span>
+
+              <div className="space-y-6 pt-4 border-t">
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <label className="text-sm font-medium leading-none">Cost Reduction</label>
+                    <span className="text-sm text-muted-foreground">High</span>
+                  </div>
+                  <Slider defaultValue={[80]} max={100} step={1} disabled />
                 </div>
-                <Slider defaultValue={[50]} max={100} step={1} disabled />
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <label className="text-sm font-medium leading-none">Comfort Protection</label>
-                  <span className="text-sm text-muted-foreground">High</span>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <label className="text-sm font-medium leading-none">Peak Reduction</label>
+                    <span className="text-sm text-muted-foreground">Medium</span>
+                  </div>
+                  <Slider defaultValue={[50]} max={100} step={1} disabled />
                 </div>
-                <Slider defaultValue={[75]} max={100} step={1} disabled />
-              </div>
 
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <label className="text-sm font-medium leading-none">Carbon Impact</label>
-                  <span className="text-sm text-muted-foreground">Low</span>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <label className="text-sm font-medium leading-none">Comfort Protection</label>
+                    <span className="text-sm text-muted-foreground">High</span>
+                  </div>
+                  <Slider defaultValue={[75]} max={100} step={1} disabled />
                 </div>
-                <Slider defaultValue={[20]} max={100} step={1} disabled />
               </div>
-            </div>
 
-            <RunOptimizationButton />
-          </CardContent>
-        </Card>
+              <RunOptimizationButton />
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Constraints Active</CardTitle>
-            <CardDescription>Rules that the optimizer must follow.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-4">
-              <li className="flex justify-between p-3 border rounded-md bg-muted/20">
-                <span className="font-medium">Household Power Limit</span>
-                <span className="text-amber-600 font-bold">{household?.powerLimitKw || 5.5} kW</span>
-              </li>
-              <li className="flex justify-between p-3 border rounded-md bg-muted/20">
-                <span className="font-medium">Battery Reserve</span>
-                <span className="text-emerald-600 font-bold">{household?.batteryReserve || 20}%</span>
-              </li>
-              <li className="flex justify-between p-3 border rounded-md bg-muted/20">
-                <span className="font-medium">EV Departure SOC</span>
-                <span className="text-blue-600 font-bold">90%</span>
-              </li>
-              <li className="flex justify-between p-3 border rounded-md bg-muted/20">
-                <span className="font-medium">Appliance Deadlines</span>
-                <span className="text-primary font-bold">Strict</span>
-              </li>
-            </ul>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Constraints Active</CardTitle>
+              <CardDescription>Rules that the optimizer must follow.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-4">
+                <li className="flex justify-between p-3 border rounded-md bg-muted/20">
+                  <span className="font-medium">Household Power Limit</span>
+                  <span className="text-amber-600 font-bold">{household.powerLimitKw || 5.5} kW</span>
+                </li>
+                <li className="flex justify-between p-3 border rounded-md bg-muted/20">
+                  <span className="font-medium">Battery Reserve</span>
+                  <span className="text-emerald-600 font-bold">{household.batteryReserve || 20}%</span>
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div>
+          <DecisionLog logs={decisionLogs} />
+        </div>
       </div>
     </div>
   );

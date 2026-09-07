@@ -62,6 +62,7 @@ export async function runOptimizationAction() {
         startTime: s.startTime,
         endTime: s.endTime,
         estimatedCost: s.cost,
+        reason: s.explanation,
         status: "scheduled"
       }
     });
@@ -72,4 +73,44 @@ export async function runOptimizationAction() {
   revalidatePath("/schedules");
   
   return { success: true, count: schedules.length };
+}
+
+export async function overrideScheduleAction(applianceId: string) {
+  const household = await prisma.household.findFirst();
+  if (!household) throw new Error("No household found");
+
+  const appliance = await prisma.appliance.findUnique({
+    where: { id: applianceId }
+  });
+  if (!appliance) throw new Error("Appliance not found");
+
+  // Delete any existing future schedule for this appliance
+  await prisma.schedule.deleteMany({
+    where: {
+      householdId: household.id,
+      applianceId: appliance.id,
+      status: "scheduled"
+    }
+  });
+
+  const now = new Date();
+  const endTime = new Date(now.getTime() + appliance.minRuntime * 3600 * 1000);
+
+  // Insert overridden schedule
+  await prisma.schedule.create({
+    data: {
+      householdId: household.id,
+      applianceId: appliance.id,
+      startTime: now,
+      endTime: endTime,
+      status: "overridden",
+      reason: "Manual user override: Forced immediate execution.",
+    }
+  });
+
+  revalidatePath("/");
+  revalidatePath("/appliances");
+  revalidatePath("/analytics");
+  
+  return { success: true };
 }

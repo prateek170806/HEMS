@@ -36,6 +36,12 @@ describe('Battery Domain Logic', () => {
       const newSoc = calculateBatterySOC(baseState, 0, 10, 1);
       expect(newSoc).toBe(0);
     });
+
+    it('should throw error on simultaneous charge and discharge', () => {
+      expect(() => {
+        calculateBatterySOC(baseState, 5, 2, 1);
+      }).toThrow(/cannot simultaneously charge and discharge/);
+    });
   });
 
   describe('canProvideEnergy', () => {

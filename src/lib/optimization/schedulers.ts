@@ -7,6 +7,7 @@ export interface ScheduleResult {
   startTime: Date;
   endTime: Date;
   cost: number;
+  explanation: string;
 }
 
 /**
@@ -33,7 +34,8 @@ export function generateBaselineSchedule(
       applianceId: app.id,
       startTime: start,
       endTime: end,
-      cost
+      cost,
+      explanation: `Baseline schedule: Started as soon as possible at ${format(start, 'HH:mm')}.`
     });
   }
 
@@ -84,7 +86,10 @@ export function generateRuleBasedSchedule(
       applianceId: app.id,
       startTime: bestStart,
       endTime: end,
-      cost
+      cost,
+      explanation: app.flexibility === 'shiftable' 
+        ? `Rule-Based schedule: Shifted to ${format(bestStart, 'HH:mm')} to avoid peak period.`
+        : `Rule-Based schedule: Fixed to ${format(bestStart, 'HH:mm')} due to constraints.`
     });
   }
 
@@ -163,7 +168,8 @@ export function optimizeSchedule(
         applianceId: app.id,
         startTime,
         endTime: addMinutes(startTime, requiredSlots * 15),
-        cost: minCost
+        cost: minCost,
+        explanation: `Optimized schedule: Placed at ${format(startTime, 'HH:mm')} because it was the cheapest available continuous window (Est: ₹${minCost.toFixed(2)}) without exceeding the ${householdPowerLimitKw}kW limit.`
       });
     } else {
       // Infeasible for this appliance (fallback to earliest possible ignoring limit to ensure execution, or mark infeasible)
@@ -172,7 +178,8 @@ export function optimizeSchedule(
         applianceId: app.id,
         startTime: windowStart,
         endTime: addMinutes(windowStart, app.minRuntime * 60),
-        cost: getPriceForTime(periods, windowStart) * app.minRuntime * app.ratedPower
+        cost: getPriceForTime(periods, windowStart) * app.minRuntime * app.ratedPower,
+        explanation: `Fallback schedule: Power limit constraints made optimization infeasible. Reverted to earliest start at ${format(windowStart, 'HH:mm')}.`
       });
     }
   }

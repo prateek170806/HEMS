@@ -2,7 +2,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import prisma from "@/lib/prisma";
-import { Settings2, Play, PowerOff } from "lucide-react";
+import { Settings2, PowerOff } from "lucide-react";
+import { OverrideButton } from "@/components/appliances/OverrideButton";
 
 export default async function AppliancesPage() {
   const appliances = await prisma.appliance.findMany({
@@ -54,9 +55,7 @@ export default async function AppliancesPage() {
                   <Button variant="outline" size="sm" className="flex-1">
                     <Settings2 className="mr-2 h-4 w-4" /> Edit
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Play className="mr-2 h-4 w-4" /> Run Now
-                  </Button>
+                  <OverrideButton applianceId={app.id} />
                 </div>
               </div>
             </CardContent>

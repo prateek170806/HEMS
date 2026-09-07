@@ -2,25 +2,64 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Battery, Sun, Zap, TrendingDown, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import prisma from "@/lib/prisma";
 import { format } from "date-fns";
+import { simulateDay } from "@/lib/simulation/engine";
+import { getPriceForTime } from "@/lib/domain/tariff";
 
 export default async function Home() {
   const household = await prisma.household.findFirst();
+  if (!household) return <div>No household configured.</div>;
+  
+  const appliances = await prisma.appliance.findMany({ where: { householdId: household.id } });
   
   // Fetch actual schedules from the database
   const schedules = await prisma.schedule.findMany({
-    where: { householdId: household?.id },
+    where: { householdId: household.id },
     include: { appliance: true },
-    orderBy: { startTime: 'asc' },
-    take: 5
+    orderBy: { startTime: 'asc' }
   });
+
+  const tariff = await prisma.tariff.findFirst({
+    where: { householdId: household.id, isActive: true },
+    include: { periods: true }
+  });
+
+  // Run simulation for today to get dynamic KPIs
+  const today = new Date();
+  const simResults = simulateDay(today, household, appliances, schedules, 1.0, 1.0);
   
-  // Dashboard mock values based on spec - in a real app these would be calculated
-  const currentPower = 3.42;
-  const todaysEnergy = 18.7;
-  const todaysCost = 126.40;
-  const peakDemand = 4.8;
-  const solarGen = 2.7;
-  const batterySoc = 74;
+  // Find current slot (based on time of day)
+  const currentHour = today.getHours();
+  const currentMinute = today.getMinutes();
+  const currentSlotIndex = currentHour * 4 + Math.floor(currentMinute / 15);
+  const currentSlot = simResults[currentSlotIndex] || simResults[0];
+
+  // Aggregate daily totals
+  let todaysEnergy = 0;
+  let todaysCost = 0;
+  let peakDemand = 0;
+
+  for (const slot of simResults) {
+    // We assume the day has elapsed up to the current slot for cost/energy
+    // For peak demand, we look at the whole simulated day
+    if (slot.homeDemandKw > peakDemand) peakDemand = slot.homeDemandKw;
+    
+    todaysEnergy += slot.homeDemandKw * 0.25; // kWh for 15 mins
+    
+    if (tariff) {
+      const price = getPriceForTime(tariff.periods, slot.timestamp);
+      todaysCost += slot.gridImportKw * 0.25 * price;
+    }
+  }
+  
+  // Current values
+  const currentPower = currentSlot.homeDemandKw;
+  const solarGen = currentSlot.solarKw;
+  const batterySoc = currentSlot.batterySoc;
+  const gridImport = currentSlot.gridImportKw;
+  const batteryPower = currentSlot.batteryPowerKw;
+
+  // Next 5 schedules
+  const upcomingSchedules = schedules.filter(s => s.startTime >= today).slice(0, 5);
 
   return (
     <div className="space-y-8">
@@ -37,10 +76,10 @@ export default async function Home() {
             <Zap className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{currentPower} kW</div>
+            <div className="text-2xl font-bold">{currentPower.toFixed(2)} kW</div>
             <p className="text-xs text-muted-foreground flex items-center mt-1">
               <TrendingDown className="h-3 w-3 mr-1 text-emerald-500" />
-              <span className="text-emerald-500 font-medium mr-1">8.2%</span> vs yesterday
+              <span className="text-emerald-500 font-medium mr-1">Dynamic</span> simulated
             </p>
           </CardContent>
         </Card>
@@ -54,7 +93,7 @@ export default async function Home() {
           <CardContent>
             <div className="text-2xl font-bold">₹{todaysCost.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {todaysEnergy} kWh consumed
+              {todaysEnergy.toFixed(1)} kWh consumed
             </p>
           </CardContent>
         </Card>
@@ -66,7 +105,7 @@ export default async function Home() {
             <ArrowUpFromLine className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{peakDemand} kW</div>
+            <div className="text-2xl font-bold">{peakDemand.toFixed(2)} kW</div>
             <p className="text-xs text-muted-foreground mt-1">
               Limit: {household?.powerLimitKw || 5.5} kW
             </p>
@@ -84,11 +123,11 @@ export default async function Home() {
           </CardHeader>
           <CardContent className="flex justify-between items-end">
             <div>
-              <div className="text-2xl font-bold">{solarGen} kW</div>
+              <div className="text-2xl font-bold">{solarGen.toFixed(2)} kW</div>
               <p className="text-xs text-muted-foreground mt-1">Solar Gen</p>
             </div>
             <div className="text-right">
-              <div className="text-xl font-bold">{batterySoc}%</div>
+              <div className="text-xl font-bold">{batterySoc.toFixed(1)}%</div>
               <p className="text-xs text-muted-foreground mt-1">Battery</p>
             </div>
           </CardContent>
@@ -105,23 +144,23 @@ export default async function Home() {
              <div className="flex flex-col items-center justify-center space-y-4 font-mono text-sm">
                 <div className="text-amber-500 flex flex-col items-center">
                   <Sun className="h-6 w-6 mb-1" />
-                  SOLAR {solarGen} kW
+                  SOLAR {solarGen.toFixed(2)} kW
                 </div>
                 <ArrowDownToLine className="h-4 w-4 text-muted-foreground animate-bounce" />
                 <div className="bg-card border shadow-sm rounded-lg p-6 font-bold text-lg text-center min-w-[200px]">
                   HOME<br />
-                  <span className="text-primary">{currentPower} kW</span>
+                  <span className="text-primary">{currentPower.toFixed(2)} kW</span>
                 </div>
                 <div className="flex justify-between w-full max-w-[300px] pt-4">
                   <div className="text-emerald-500 flex flex-col items-center">
                      <ArrowUpFromLine className="h-4 w-4 mb-1" />
                      BATTERY
-                     <span className="text-xs">+0.8 kW</span>
+                     <span className="text-xs">{batteryPower > 0 ? '+' : ''}{batteryPower.toFixed(2)} kW</span>
                   </div>
                   <div className="text-blue-500 flex flex-col items-center">
                      <ArrowUpFromLine className="h-4 w-4 mb-1" />
                      GRID
-                     <span className="text-xs">0.0 kW</span>
+                     <span className="text-xs">{gridImport.toFixed(2)} kW</span>
                   </div>
                 </div>
              </div>
@@ -135,13 +174,13 @@ export default async function Home() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {schedules.length === 0 ? (
+              {upcomingSchedules.length === 0 ? (
                 <div className="text-center py-8 text-sm text-muted-foreground">
                   No upcoming schedules.<br />
                   Run the optimizer in the Optimization Center.
                 </div>
               ) : (
-                schedules.map(schedule => {
+                upcomingSchedules.map(schedule => {
                   const timeStr = format(schedule.startTime, "HH:mm");
                   
                   // Simple color picking based on category/name
