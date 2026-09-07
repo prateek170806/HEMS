@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Household {
+  id              String   @id @default(uuid())
+  name            String
+  timezone        String   @default("Asia/Kolkata")
+  currency        String   @default("INR")
+  powerLimitKw    Float    @default(5.5)
+  batteryReserve  Float    @default(20) // Percentage
+  optimizationMode String  @default("economic")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  appliances      Appliance[]
+  tariffs         Tariff[]
+  meterReadings   MeterReading[]
+  notifications   Notification[]
+  optimizationRuns OptimizationRun[]
+  schedules       Schedule[]
+}
+
+model Appliance {
+  id              String   @id @default(uuid())
+  householdId     String
+  household       Household @relation(fields: [householdId], references: [id])
+  name            String
+  category        String
+  ratedPower      Float    // kW
+  status          String   @default("offline")
+  flexibility     String   @default("non_flexible") // non_flexible, shiftable, interruptible, thermostatic, storage, critical
+  minRuntime      Float    @default(0) // hours
+  maxRuntime      Float    @default(24) // hours
+  earliestStart   String?  // HH:mm format
+  latestFinish    String?  // HH:mm format
+  priority        String   @default("medium") // low, medium, high
+  automationEnabled Boolean @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  schedules       Schedule[]
+}
+
+model Tariff {
+  id              String   @id @default(uuid())
+  householdId     String
+  household       Household @relation(fields: [householdId], references: [id])
+  name            String
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  periods         TariffPeriod[]
+}
+
+model TariffPeriod {
+  id              String   @id @default(uuid())
+  tariffId        String
+  tariff          Tariff   @relation(fields: [tariffId], references: [id])
+  name            String
+  startTime       String   // HH:mm format
+  endTime         String   // HH:mm format
+  pricePerKwh     Float
+  type            String   // off_peak, normal, peak, solar
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model MeterReading {
+  id              String   @id @default(uuid())
+  householdId     String
+  household       Household @relation(fields: [householdId], references: [id])
+  timestamp       DateTime
+  importKw        Float    @default(0)
+  exportKw        Float    @default(0)
+  solarKw         Float    @default(0)
+  batterySoc      Float    @default(0) // Percentage
+  homeDemandKw    Float    @default(0)
+  createdAt       DateTime @default(now())
+}
+
+model Notification {
+  id              String   @id @default(uuid())
+  householdId     String
+  household       Household @relation(fields: [householdId], references: [id])
+  type            String   // alert, info, success, warning
+  message         String
+  isRead          Boolean  @default(false)
+  timestamp       DateTime @default(now())
+}
+
+model OptimizationRun {
+  id              String   @id @default(uuid())
+  householdId     String
+  household       Household @relation(fields: [householdId], references: [id])
+  timestamp       DateTime @default(now())
+  horizonHours    Int
+  status          String   // success, infeasible, failed
+  mode            String   // economic, balanced, comfort, green
+  projectedCost   Float?
+  projectedPeak   Float?
+  savings         Float?
+  explanation     String?
+  createdAt       DateTime @default(now())
+  
+  schedules       Schedule[]
+}
+
+model Schedule {
+  id              String   @id @default(uuid())
+  householdId     String
+  household       Household @relation(fields: [householdId], references: [id])
+  applianceId     String
+  appliance       Appliance @relation(fields: [applianceId], references: [id])
+  optimizationId  String?
+  optimization    OptimizationRun? @relation(fields: [optimizationId], references: [id])
+  startTime       DateTime
+  endTime         DateTime
+  status          String   @default("scheduled") // scheduled, active, completed, overridden
+  reason          String?
+  estimatedCost   Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
