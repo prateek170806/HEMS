@@ -2,8 +2,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import prisma from "@/lib/prisma";
-import { Settings2, PowerOff } from "lucide-react";
 import { OverrideButton } from "@/components/appliances/OverrideButton";
+import { EditApplianceDialog } from "@/components/appliances/EditApplianceDialog";
 
 export default async function AppliancesPage() {
   const appliances = await prisma.appliance.findMany({
@@ -52,9 +52,7 @@ export default async function AppliancesPage() {
                 </div>
                 
                 <div className="pt-4 flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Settings2 className="mr-2 h-4 w-4" /> Edit
-                  </Button>
+                  <EditApplianceDialog appliance={app} />
                   <OverrideButton applianceId={app.id} />
                 </div>
               </div>
