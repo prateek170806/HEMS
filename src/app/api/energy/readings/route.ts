@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       }
     });
     return NextResponse.json(reading, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

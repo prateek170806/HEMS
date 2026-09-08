@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { runDemoScenarioAction } from "@/app/actions";
+import { resetDemoStateAction } from "@/app/actions";
 import { useState } from "react";
 import { Play } from "lucide-react";
 
@@ -11,7 +11,7 @@ export function DemoButton() {
   const handleDemo = async () => {
     setLoading(true);
     try {
-      await runDemoScenarioAction();
+      await resetDemoStateAction();
       window.location.reload();
     } finally {
       setLoading(false);

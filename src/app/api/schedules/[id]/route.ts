@@ -30,14 +30,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json(updated);
     }
     
-    // General patch (not strictly used yet, but good to have)
-    const updated = await prisma.schedule.update({
-      where: { id },
-      data: body
-    });
-    return NextResponse.json(updated);
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

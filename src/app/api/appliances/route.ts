@@ -11,7 +11,7 @@ export async function GET() {
       where: { householdId: household.id }
     });
     return NextResponse.json(appliances);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
       }
     });
     return NextResponse.json(appliance, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

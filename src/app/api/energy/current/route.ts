@@ -13,7 +13,7 @@ export async function GET() {
     
     if (!latestReading) return NextResponse.json({ error: 'No readings found' }, { status: 404 });
     return NextResponse.json(latestReading);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

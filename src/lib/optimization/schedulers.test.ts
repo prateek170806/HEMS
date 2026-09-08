@@ -84,6 +84,7 @@ describe('Schedulers Logic', () => {
 
   describe('optimizeSchedule', () => {
     it('should find the absolute cheapest continuous window', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mockHousehold = { id: 'hh1', powerLimitKw: 10.0, batteryReserve: 20, optimizationMode: 'economic', solarIrradiance: 50, baseLoad: 10, forecastError: 0, smartMeterOffline: false, evDisconnected: false, inverterFault: false } as any;
       const results = optimizeSchedule([appFlexible], today, mockPeriods, mockHousehold);
       expect(results.length).toBe(1);
@@ -99,6 +100,7 @@ describe('Schedulers Logic', () => {
 
     it('should fallback if power limit is exceeded', () => {
       // Limit is 1.0kW, but app requires 2.0kW. Should trigger fallback.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mockHousehold = { id: 'hh1', powerLimitKw: 1.0, batteryReserve: 20, optimizationMode: 'economic', solarIrradiance: 50, baseLoad: 10, forecastError: 0, smartMeterOffline: false, evDisconnected: false, inverterFault: false } as any;
       const results = optimizeSchedule([appFlexible], today, mockPeriods, mockHousehold);
       expect(results.length).toBe(1);

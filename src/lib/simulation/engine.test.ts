@@ -58,6 +58,11 @@ describe('Simulation Engine', () => {
       endTime: new Date(today.getTime() + 11 * 3600 * 1000),
       status: 'scheduled',
       reason: null,
+      reasonCategory: null,
+      impact: null,
+      affectedMetric: null,
+      originalStart: null,
+      originalEnd: null,
       estimatedCost: null,
       createdAt: new Date(),
       updatedAt: new Date()

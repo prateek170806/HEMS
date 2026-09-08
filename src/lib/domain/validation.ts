@@ -13,8 +13,7 @@ export interface ValidationIssue {
 
 export function validateSchedule(
   slots: ScheduleSlot[],
-  appliances: Appliance[],
-  householdPowerLimitKw: number
+  appliances: Appliance[]
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   

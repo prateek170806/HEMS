@@ -146,43 +146,38 @@ export default async function LiveEnergyPage() {
           <CardTitle>Live Energy Flow</CardTitle>
           <CardDescription>Real-time distribution of power in your household at {format(today, "HH:mm:ss")}.</CardDescription>
         </CardHeader>
-        <CardContent className="h-[400px] flex flex-col items-center justify-center border-t bg-muted/5 relative">
-          <div className="grid grid-cols-3 gap-8 w-full max-w-4xl text-center">
-            {/* Top row */}
-            <div className="flex flex-col items-center justify-center p-4">
+        <CardContent className="flex flex-col items-center justify-center border-t bg-muted/5 relative p-6 sm:p-10">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-y-8 md:gap-y-12 gap-x-4 md:gap-x-8 w-full max-w-4xl text-center justify-items-center">
+            {/* Top row: Solar & Grid */}
+            <div className="flex flex-col items-center justify-start h-full col-span-1 md:col-start-1 w-full">
               <div className="h-16 w-16 bg-amber-100 dark:bg-amber-900 rounded-full flex items-center justify-center mb-2">
                 <Sun className="h-8 w-8 text-amber-500" />
               </div>
               <h3 className="font-bold text-lg">Solar</h3>
-              <p className="text-xl font-mono text-amber-600">{solarGen.toFixed(2)} kW</p>
-            </div>
-            
-            <div className="flex flex-col items-center justify-center">
-               <ArrowDownToLine className={`h-8 w-8 text-muted-foreground ${solarGen > 0 ? "animate-bounce" : "opacity-30"}`} />
+              <p className="text-xl font-mono text-amber-600 mb-6">{solarGen.toFixed(2)} kW</p>
+              <ArrowDownToLine className={`mt-auto h-8 w-8 text-muted-foreground ${solarGen > 0 ? "animate-bounce" : "opacity-30"}`} />
             </div>
 
-            <div className="flex flex-col items-center justify-center p-4">
+            <div className="flex flex-col items-center justify-start h-full col-span-1 md:col-start-3 w-full">
               <div className="h-16 w-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mb-2">
                 <Server className="h-8 w-8 text-blue-500" />
               </div>
               <h3 className="font-bold text-lg">Grid</h3>
-              <p className="text-xl font-mono text-blue-600">{gridImport.toFixed(2)} kW</p>
+              <p className="text-xl font-mono text-blue-600 mb-6">{gridImport.toFixed(2)} kW</p>
+              <ArrowDownToLine className={`mt-auto h-8 w-8 text-muted-foreground ${gridImport > 0 ? "animate-bounce" : "opacity-30"}`} />
             </div>
 
-            {/* Middle row */}
-            <div></div>
-            
-            <div className="flex flex-col items-center justify-center p-6 bg-card border-2 shadow-lg rounded-2xl relative z-10 min-h-[150px]">
+            {/* Middle row: HOME */}
+            <div className="flex flex-col items-center justify-center p-6 bg-card border-2 shadow-lg rounded-2xl relative z-10 w-full min-h-[150px] col-span-2 md:col-span-1 md:col-start-2 row-start-2">
               <Zap className="h-10 w-10 text-primary mb-2" />
               <h3 className="font-bold text-2xl">HOME</h3>
               <p className="text-3xl font-mono font-bold text-primary">{currentPower.toFixed(2)} kW</p>
             </div>
-            
-            <div></div>
 
-            {/* Bottom row */}
-            <div className="flex flex-col items-center justify-center p-4">
-              <div className="h-16 w-16 bg-emerald-100 dark:bg-emerald-900 rounded-full flex items-center justify-center mb-2">
+            {/* Bottom row: Battery & EV */}
+            <div className="flex flex-col items-center justify-end h-full col-span-1 md:col-start-1 row-start-3 w-full">
+              <ArrowUpFromLine className={`mb-auto h-8 w-8 text-muted-foreground ${batteryPower !== 0 ? "animate-pulse" : "opacity-30"}`} />
+              <div className="h-16 w-16 bg-emerald-100 dark:bg-emerald-900 rounded-full flex items-center justify-center mb-2 mt-6">
                 <Battery className="h-8 w-8 text-emerald-500" />
               </div>
               <h3 className="font-bold text-lg">Battery</h3>
@@ -191,19 +186,18 @@ export default async function LiveEnergyPage() {
               </p>
               <p className="text-sm font-medium mt-1">{batterySoc.toFixed(1)}%</p>
             </div>
-
-            <div className="flex flex-col items-center justify-center">
-               <ArrowUpFromLine className={`h-8 w-8 text-muted-foreground ${(batteryPower !== 0 || gridImport > 0) ? "animate-pulse" : "opacity-30"}`} />
-            </div>
             
-            {evs.length > 0 && (
-              <div className="flex flex-col items-center justify-center p-4">
-                <div className="h-16 w-16 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mb-2">
+            {evs.length > 0 ? (
+              <div className="flex flex-col items-center justify-end h-full col-span-1 md:col-start-3 row-start-3 w-full">
+                <ArrowUpFromLine className={`mb-auto h-8 w-8 text-muted-foreground ${evs[0].status === "active" ? "animate-pulse" : "opacity-30"}`} />
+                <div className="h-16 w-16 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mb-2 mt-6">
                   <Car className="h-8 w-8 text-purple-500" />
                 </div>
                 <h3 className="font-bold text-lg">EV</h3>
                 <p className="text-xl font-mono text-purple-600">{evs[0].status === "active" ? evs[0].ratedPower.toFixed(2) : "0.00"} kW</p>
               </div>
+            ) : (
+              <div className="col-span-1 md:col-start-3 row-start-3"></div>
             )}
           </div>
         </CardContent>

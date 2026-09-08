@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const applianceSchema = z.object({
+export const baseApplianceSchema = z.object({
   name: z.string().min(1, "Name is required"),
   category: z.string().min(1, "Category is required"),
   ratedPower: z.number().positive("Rated power must be positive"),
@@ -14,4 +14,33 @@ export const applianceSchema = z.object({
   status: z.string().default("offline")
 });
 
-export const updateApplianceSchema = applianceSchema.partial();
+export const applianceSchema = baseApplianceSchema.superRefine((data, ctx) => {
+  if (data.maxRuntime < data.minRuntime) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Max runtime cannot be less than min runtime",
+      path: ["maxRuntime"],
+    });
+  }
+
+  if (data.earliestStart && data.latestFinish) {
+    const parseTime = (time: string) => {
+      const [h, m] = time.split(':').map(Number);
+      return h + m / 60;
+    };
+    const start = parseTime(data.earliestStart);
+    let finish = parseTime(data.latestFinish);
+    if (finish <= start) finish += 24; // Crosses midnight
+
+    const windowDuration = finish - start;
+    if (windowDuration < data.minRuntime) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Operating window (${windowDuration.toFixed(1)}h) cannot be smaller than min runtime (${data.minRuntime}h)`,
+        path: ["latestFinish"],
+      });
+    }
+  }
+});
+
+export const updateApplianceSchema = baseApplianceSchema.partial();

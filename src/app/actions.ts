@@ -1,9 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { optimizeSchedule } from "@/lib/optimization/schedulers";
 import { revalidatePath } from "next/cache";
-import { startOfDay } from "date-fns";
 
 import { executeOptimizationRun } from "@/lib/optimization/execute";
 
@@ -16,6 +14,7 @@ export async function runOptimizationAction() {
   revalidatePath("/");
   revalidatePath("/schedules");
   revalidatePath("/analytics");
+  revalidatePath("/demo");
   
   return { success: true, count: result.schedules.length };
 }
@@ -60,10 +59,16 @@ export async function overrideScheduleAction(applianceId: string) {
   return { success: true };
 }
 
-export async function runDemoScenarioAction() {
+export async function resetDemoStateAction() {
   console.log("Running demo scenario reset...");
 
-  // Clean up
+  // NOTE: This is a single-tenant application. There is exactly one household per
+  // deployment. The deleteMany() calls below wipe ALL data intentionally — this is
+  // a full demo reset, not a per-household filter. Calling this will destroy the
+  // current household configuration and replace it with the canonical demo scenario.
+  // Do NOT call this in a multi-tenant deployment without adding householdId filters.
+
+  // Clean up — intentional full reset for single-tenant demo deployment
   await prisma.schedule.deleteMany();
   await prisma.optimizationRun.deleteMany();
   await prisma.meterReading.deleteMany();
@@ -81,6 +86,8 @@ export async function runDemoScenarioAction() {
       powerLimitKw: 5.5,
       batteryReserve: 20,
       optimizationMode: 'economic',
+      solarIrradiance: 800,
+      baseLoad: 0.5,
     },
   });
 
@@ -106,7 +113,7 @@ export async function runDemoScenarioAction() {
       flexibility: 'shiftable',
       minRuntime: 1,
       maxRuntime: 1,
-      earliestStart: '17:00',
+      earliestStart: '10:00',
       latestFinish: '20:00',
       priority: 'high',
       householdId: household.id,
@@ -149,13 +156,11 @@ export async function runDemoScenarioAction() {
     }
   });
 
-  // Run the optimizer immediately for the demo
-  await runOptimizationAction();
-
   revalidatePath("/");
   revalidatePath("/appliances");
   revalidatePath("/analytics");
   revalidatePath("/schedules");
+  revalidatePath("/demo");
   
   return { success: true };
 }

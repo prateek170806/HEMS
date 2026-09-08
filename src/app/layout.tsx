@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   description: "Tariff-aware smart home energy management for intelligent residential load scheduling, energy optimization, solar, battery and EV coordination.",
 };
 
+import { ThemeProvider } from "@/components/theme-provider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -19,16 +21,23 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} h-screen overflow-hidden flex bg-background`}>
-        <TooltipProvider>
-          <Sidebar />
-          <div className="flex flex-1 flex-col overflow-hidden">
-            <Topbar />
-            <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-muted/20">
-              {children}
-            </main>
-          </div>
-        </TooltipProvider>
+      <body className={`${inter.className} min-h-screen flex flex-col md:flex-row bg-background`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <TooltipProvider>
+            <Sidebar />
+            <div className="flex flex-1 flex-col min-w-0">
+              <Topbar />
+              <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/20">
+                {children}
+              </main>
+            </div>
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

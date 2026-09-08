@@ -1,90 +1,69 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, TrendingDown, Clock, Zap } from "lucide-react";
-import prisma from "@/lib/prisma";
-import { startOfDay } from "date-fns";
-import { generateBaselineSchedule, generateRuleBasedSchedule, optimizeSchedule } from "@/lib/optimization/schedulers";
-import { simulateDay } from "@/lib/simulation/engine";
-import { getPriceForTime } from "@/lib/domain/tariff";
+import prisma from "@/lib/server/db";
 import { DemoButton } from "@/components/demo/DemoButton";
 
 export default async function AnalyticsPage() {
   const household = await prisma.household.findFirst();
   if (!household) return <div>No household configured.</div>;
   
-  const appliances = await prisma.appliance.findMany({ where: { householdId: household.id } });
-  const tariff = await prisma.tariff.findFirst({
-    where: { householdId: household.id, isActive: true },
-    include: { periods: true }
-  });
-
-  const today = startOfDay(new Date());
-
-  // Run the three strategies
-  const baselineSchedules = tariff ? generateBaselineSchedule(appliances, today, tariff.periods) : [];
-  const ruleBasedSchedules = tariff ? generateRuleBasedSchedule(appliances, today, tariff.periods) : [];
-  // eslint-disable-next-line react-hooks/purity
-  const startOpt = Date.now();
-  const optSchedules = tariff ? optimizeSchedule(appliances, today, tariff.periods, household) : [];
-  // eslint-disable-next-line react-hooks/purity
-  const optTime = Date.now() - startOpt;
-
-  // We need to convert ScheduleResult[] to Schedule[] to pass to simulateDay
-  const mapToSchedule = (s: { applianceId: string, startTime: Date, endTime: Date, reason?: string | null, explanation?: string, cost?: number | null, estimatedCost?: number | null }) => ({
-    applianceId: s.applianceId,
-    startTime: s.startTime,
-    endTime: s.endTime,
-    id: "",
-    householdId: "",
-    optimizationId: null,
-    status: "",
-    reason: null,
-    estimatedCost: null,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  });
-
-  // Run simulation for each to get peak demand and total cost
-  const simBaseline = simulateDay(today, household, appliances, baselineSchedules.map(mapToSchedule) as never[]);
-  const simRuleBased = simulateDay(today, household, appliances, ruleBasedSchedules.map(mapToSchedule) as never[]);
-  const simOpt = simulateDay(today, household, appliances, optSchedules.map(mapToSchedule) as never[]);
-
-  const calculateMetrics = (simResults: { homeDemandKw: number, gridImportKw: number, gridExportKw: number, solarKw: number, timestamp: Date }[]) => {
-    let cost = 0;
-    let peak = 0;
-    let solarSelfConsum = 0;
-    let solarGenTotal = 0;
-    let gridImport = 0;
-
-    for (const slot of simResults) {
-      if (slot.homeDemandKw > peak) peak = slot.homeDemandKw;
-      if (tariff) {
-         cost += slot.gridImportKw * 0.25 * getPriceForTime(tariff.periods, slot.timestamp);
+  const latestRun = (await prisma.optimizationRun.findFirst({
+    where: { householdId: household.id, status: "success" },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      schedules: {
+        include: { appliance: true }
       }
-      solarGenTotal += slot.solarKw * 0.25;
-      solarSelfConsum += (slot.solarKw - slot.gridExportKw) * 0.25;
-      gridImport += slot.gridImportKw * 0.25;
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  })) as any;
 
-    // A very simple approximation of "Comfort Violations" for this demo
-    // We check if the schedule was pushed to absurd limits (which baseline does, but rule-based might just skip).
-    // In our system, the heuristic guarantees no comfort violation by construction.
-    const comfortViolations = 0; // The solver only yields valid windows, so it's always 0 for HEMS. Baseline is user-chosen.
-    
-    return {
-      cost,
-      peak,
-      gridImport,
-      comfortViolations,
-      solarUtil: solarGenTotal > 0 ? (solarSelfConsum / solarGenTotal) * 100 : 0
-    };
-  };
+  if (!latestRun) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Research & Analytics</h2>
+            <p className="text-muted-foreground">
+              Compare baseline usage against HEMS optimized schedules.
+            </p>
+          </div>
+          <DemoButton />
+        </div>
+        <Card>
+          <CardContent className="pt-6 text-center text-muted-foreground">
+            No optimization run found. Please run the optimizer or initialize the demo scenario.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-  const metricsBaseline = calculateMetrics(simBaseline);
-  const metricsRuleBased = calculateMetrics(simRuleBased);
-  const metricsOpt = calculateMetrics(simOpt);
+  const baselineCost = latestRun.baselineCost || 0;
+  const optCost = latestRun.projectedCost || 0;
+  
+  const baselinePeak = latestRun.baselinePeak || 0;
+  const optPeak = latestRun.projectedPeak || 0;
 
-  const costSavingsPct = metricsBaseline.cost > 0 ? ((metricsBaseline.cost - metricsOpt.cost) / metricsBaseline.cost) * 100 : 0;
-  const peakReductionPct = metricsBaseline.peak > 0 ? ((metricsBaseline.peak - metricsOpt.peak) / metricsBaseline.peak) * 100 : 0;
+  const baselineGridImport = latestRun.baselineGridImport || 0;
+  const optGridImport = latestRun.gridImport || 0;
+
+  const baselineSolarUtil = latestRun.baselineSolarUsage || 0;
+  const optSolarUtil = latestRun.solarUsage || 0;
+
+  // Impact calculations
+  const costSavings = Math.max(0, baselineCost - optCost);
+  const costSavingsPct = baselineCost > 0 ? (costSavings / baselineCost) * 100 : 0;
+  
+  const peakReduction = Math.max(0, baselinePeak - optPeak);
+  const peakReductionPct = baselinePeak > 0 ? (peakReduction / baselinePeak) * 100 : 0;
+  
+  const gridReduction = Math.max(0, baselineGridImport - optGridImport);
+  const gridReductionPct = baselineGridImport > 0 ? (gridReduction / baselineGridImport) * 100 : 0;
+  
+  const solarImprovement = optSolarUtil - baselineSolarUtil; // Absolute percentage points
+
+  const optTime = latestRun.runtimeMs || 0;
 
   return (
     <div className="space-y-6">
@@ -106,7 +85,7 @@ export default async function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{costSavingsPct.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground mt-1">₹{(metricsBaseline.cost - metricsOpt.cost).toFixed(2)} saved vs baseline</p>
+            <p className="text-xs text-muted-foreground mt-1">₹{costSavings.toFixed(2)} saved vs baseline</p>
           </CardContent>
         </Card>
         
@@ -117,7 +96,7 @@ export default async function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{peakReductionPct.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground mt-1">{metricsOpt.peak.toFixed(1)} kW vs {metricsBaseline.peak.toFixed(1)} kW baseline</p>
+            <p className="text-xs text-muted-foreground mt-1">{optPeak.toFixed(1)} kW vs {baselinePeak.toFixed(1)} kW baseline</p>
           </CardContent>
         </Card>
 
@@ -127,8 +106,10 @@ export default async function AnalyticsPage() {
             <Activity className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metricsOpt.solarUtil.toFixed(0)}%</div>
-            <p className="text-xs text-muted-foreground mt-1">Self-consumption rate</p>
+            <div className="text-2xl font-bold">{optSolarUtil.toFixed(0)}%</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {solarImprovement > 0 ? `+${solarImprovement.toFixed(0)}% vs baseline` : "No change"}
+            </p>
           </CardContent>
         </Card>
 
@@ -138,7 +119,7 @@ export default async function AnalyticsPage() {
             <Clock className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{optTime.toFixed(1)}ms</div>
+            <div className="text-2xl font-bold">{optTime}ms</div>
             <p className="text-xs text-muted-foreground mt-1">Heuristic solver runtime</p>
           </CardContent>
         </Card>
@@ -146,13 +127,13 @@ export default async function AnalyticsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Algorithm Comparison</CardTitle>
-          <CardDescription>Evaluation of different scheduling strategies across metrics using deterministic simulation.</CardDescription>
+          <CardTitle>Before vs After Optimization</CardTitle>
+          <CardDescription>Evaluation of HEMS dynamic scheduling vs unmanaged baseline.</CardDescription>
         </CardHeader>
         <CardContent>
-          {costSavingsPct > 0 && (
-             <div className="mb-4 p-3 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-md text-sm font-medium">
-               ✨ HEMS reduced the simulated daily cost by {costSavingsPct.toFixed(1)}% compared to your baseline schedule.
+          {costSavings > 0 && (
+             <div className="mb-4 p-3 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-md text-sm font-medium">
+               ✨ HEMS reduced daily energy cost by {costSavingsPct.toFixed(1)}% without violating any hard comfort constraints.
              </div>
           )}
           <div className="overflow-x-auto">
@@ -160,68 +141,135 @@ export default async function AnalyticsPage() {
               <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b">
                 <tr>
                   <th className="px-4 py-3">Metric</th>
-                  <th className="px-4 py-3">User-Driven (Baseline)</th>
-                  <th className="px-4 py-3">Rule-Based</th>
-                  <th className="px-4 py-3">HEMS Optimization</th>
-                  <th className="px-4 py-3">Improvement</th>
+                  <th className="px-4 py-3">Before (Baseline)</th>
+                  <th className="px-4 py-3">After (HEMS)</th>
+                  <th className="px-4 py-3">Impact</th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b">
-                  <td className="px-4 py-3 font-medium">Total Cost (₹)</td>
-                  <td className="px-4 py-3">{metricsBaseline.cost.toFixed(2)}</td>
-                  <td className="px-4 py-3">{metricsRuleBased.cost.toFixed(2)}</td>
-                  <td className="px-4 py-3 font-bold text-emerald-600">{metricsOpt.cost.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-emerald-600">{costSavingsPct.toFixed(1)}%</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="px-4 py-3 font-medium">Peak Demand (kW)</td>
-                  <td className="px-4 py-3">{metricsBaseline.peak.toFixed(2)}</td>
-                  <td className="px-4 py-3">{metricsRuleBased.peak.toFixed(2)}</td>
-                  <td className="px-4 py-3 font-bold text-emerald-600">{metricsOpt.peak.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-emerald-600">{peakReductionPct.toFixed(1)}%</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="px-4 py-3 font-medium">Power Limit Viols.</td>
-                  <td className="px-4 py-3 text-destructive">{metricsBaseline.peak > household.powerLimitKw ? 'Yes' : 'No'}</td>
-                  <td className="px-4 py-3">{metricsRuleBased.peak > household.powerLimitKw ? 'Yes' : 'No'}</td>
-                  <td className="px-4 py-3 font-bold text-emerald-600">No</td>
-                  <td className="px-4 py-3 text-muted-foreground">-</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="px-4 py-3 font-medium">Grid Import (kWh)</td>
-                  <td className="px-4 py-3">{metricsBaseline.gridImport.toFixed(2)}</td>
-                  <td className="px-4 py-3">{metricsRuleBased.gridImport.toFixed(2)}</td>
-                  <td className="px-4 py-3 font-bold text-emerald-600">{metricsOpt.gridImport.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-emerald-600">
-                     {metricsBaseline.gridImport > 0 ? ((metricsBaseline.gridImport - metricsOpt.gridImport) / metricsBaseline.gridImport * 100).toFixed(1) + "%" : "0%"}
+                <tr className="border-b hover:bg-muted/30">
+                  <td className="px-4 py-3 font-medium">Energy Cost</td>
+                  <td className="px-4 py-3 font-mono">₹{baselineCost.toFixed(2)}</td>
+                  <td className="px-4 py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">₹{optCost.toFixed(2)}</td>
+                  <td className="px-4 py-3 font-medium text-emerald-600 dark:text-emerald-400">
+                    {costSavingsPct > 0 ? `-${costSavingsPct.toFixed(1)}% (₹${costSavings.toFixed(2)})` : '-'}
                   </td>
                 </tr>
-                <tr className="border-b">
-                  <td className="px-4 py-3 font-medium">Solar Self-Consum.</td>
-                  <td className="px-4 py-3">{metricsBaseline.solarUtil.toFixed(0)}%</td>
-                  <td className="px-4 py-3">{metricsRuleBased.solarUtil.toFixed(0)}%</td>
-                  <td className="px-4 py-3 font-bold text-emerald-600">{metricsOpt.solarUtil.toFixed(0)}%</td>
-                  <td className="px-4 py-3 text-emerald-600">
-                    {metricsBaseline.solarUtil > 0 ? ((metricsOpt.solarUtil - metricsBaseline.solarUtil)).toFixed(1) + "%" : "0%"}
+                <tr className="border-b hover:bg-muted/30">
+                  <td className="px-4 py-3 font-medium">Peak Demand</td>
+                  <td className="px-4 py-3 font-mono">{baselinePeak.toFixed(2)} kW</td>
+                  <td className="px-4 py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">{optPeak.toFixed(2)} kW</td>
+                  <td className="px-4 py-3 font-medium text-emerald-600 dark:text-emerald-400">
+                    {peakReductionPct > 0 ? `-${peakReductionPct.toFixed(1)}%` : '-'}
                   </td>
                 </tr>
-                <tr className="border-b">
-                  <td className="px-4 py-3 font-medium">Comfort Violations</td>
-                  <td className="px-4 py-3">0</td>
-                  <td className="px-4 py-3">0</td>
-                  <td className="px-4 py-3 font-bold text-emerald-600">0</td>
-                  <td className="px-4 py-3 text-muted-foreground">Maintained</td>
+                <tr className="border-b hover:bg-muted/30">
+                  <td className="px-4 py-3 font-medium">Grid Import</td>
+                  <td className="px-4 py-3 font-mono">{baselineGridImport > 0 ? `${baselineGridImport.toFixed(2)} kWh` : '-'}</td>
+                  <td className="px-4 py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">{optGridImport > 0 ? `${optGridImport.toFixed(2)} kWh` : '-'}</td>
+                  <td className="px-4 py-3 font-medium text-emerald-600 dark:text-emerald-400">
+                    {gridReductionPct > 0 ? `-${gridReductionPct.toFixed(1)}%` : '-'}
+                  </td>
                 </tr>
-                <tr>
-                  <td className="px-4 py-3 font-medium">Tasks Scheduled</td>
-                  <td className="px-4 py-3">{baselineSchedules.length}/{appliances.filter(a => a.automationEnabled).length}</td>
-                  <td className="px-4 py-3">{ruleBasedSchedules.length}/{appliances.filter(a => a.automationEnabled).length}</td>
-                  <td className="px-4 py-3 font-bold">{optSchedules.length}/{appliances.filter(a => a.automationEnabled).length}</td>
+                <tr className="border-b hover:bg-muted/30">
+                  <td className="px-4 py-3 font-medium">Solar Usage</td>
+                  <td className="px-4 py-3 font-mono">{baselineSolarUtil > 0 ? `${baselineSolarUtil.toFixed(0)}%` : '-'}</td>
+                  <td className="px-4 py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">{optSolarUtil > 0 ? `${optSolarUtil.toFixed(0)}%` : '-'}</td>
+                  <td className="px-4 py-3 font-medium text-emerald-600 dark:text-emerald-400">
+                    {solarImprovement > 0 ? `+${solarImprovement.toFixed(0)}%` : '-'}
+                  </td>
+                </tr>
+                <tr className="border-b hover:bg-muted/30">
+                  <td className="px-4 py-3 font-medium">Power Limit Violation</td>
+                  <td className="px-4 py-3 text-destructive">{baselinePeak > household.powerLimitKw ? 'Yes' : 'No'}</td>
+                  <td className="px-4 py-3 font-bold text-emerald-600 dark:text-emerald-400">{optPeak > household.powerLimitKw ? 'Yes (Soft)' : 'No'}</td>
                   <td className="px-4 py-3 text-muted-foreground">-</td>
                 </tr>
               </tbody>
             </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* DECISION LOG UI */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Optimization Decisions</CardTitle>
+          <CardDescription>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            Analyzed {latestRun.schedules?.length || 0} appliances and identified {latestRun.schedules?.filter((s: any) => s.reasonCategory !== 'NO_CHANGE_NEEDED').length || 0} scheduling shifts.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {latestRun.schedules?.map((schedule: any) => {
+              const appName = schedule.appliance?.name || 'Unknown Appliance';
+              const isShifted = schedule.reasonCategory !== 'NO_CHANGE_NEEDED';
+              const isError = schedule.reasonCategory === 'INFEASIBLE';
+              
+              const origStart = schedule.originalStart ? new Date(schedule.originalStart).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--';
+              const origEnd = schedule.originalEnd ? new Date(schedule.originalEnd).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--';
+              const newStart = new Date(schedule.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+              const newEnd = new Date(schedule.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+              let badgeColor = "bg-muted text-muted-foreground";
+              if (isError) badgeColor = "bg-destructive/10 text-destructive";
+              else if (isShifted) badgeColor = "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
+
+              return (
+                <div key={schedule.id} className="p-4 border rounded-lg bg-card text-card-foreground">
+                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold">{appName}</h4>
+                        <span className={`px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider rounded-full ${badgeColor}`}>
+                          {schedule.reasonCategory || 'UNKNOWN'}
+                        </span>
+                      </div>
+                      
+                      <div className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                        {isShifted ? (
+                          <>
+                            <span className="line-through opacity-70">{origStart} - {origEnd}</span>
+                            <span className="text-primary font-bold">→</span>
+                            <span className="text-foreground font-bold">{newStart} - {newEnd}</span>
+                          </>
+                        ) : (
+                          <span>{newStart} - {newEnd}</span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="md:w-1/2 space-y-2 text-sm">
+                      <div>
+                        <span className="font-semibold text-xs uppercase text-muted-foreground">Reason</span>
+                        <p>{schedule.reason || 'No detailed reason provided.'}</p>
+                      </div>
+                      {(schedule.impact || schedule.affectedMetric) && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="font-semibold uppercase text-muted-foreground">Impact:</span>
+                          <span className={isShifted && !isError ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-muted-foreground"}>
+                            {schedule.impact || 'None'}
+                          </span>
+                          {schedule.affectedMetric && (
+                            <span className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-medium uppercase">
+                              {schedule.affectedMetric}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            
+            {(!latestRun.schedules || latestRun.schedules.length === 0) && (
+              <div className="text-sm text-muted-foreground text-center py-4">
+                No scheduling decisions recorded for this run.
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

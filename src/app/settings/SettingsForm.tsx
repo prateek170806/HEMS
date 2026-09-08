@@ -84,6 +84,7 @@ export function SettingsForm({ initialData }: { initialData: SettingsFormData })
             
             <div className="space-y-2">
               <Label htmlFor="powerLimitKw">Grid Power Limit (kW)</Label>
+              <div className="text-xs text-muted-foreground mt-1">Target threshold used as an optimization penalty.</div>
               <Input
                 id="powerLimitKw"
                 name="powerLimitKw"

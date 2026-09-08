@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { RefreshCcw, CloudRain, Sun, ZapOff, Loader2, AlertTriangle } from "lucide-react";
-import { runDemoScenarioAction, updateSimulationStateAction } from "@/app/actions";
+import { resetDemoStateAction, updateSimulationStateAction } from "@/app/actions";
 
 interface SimulationClientProps {
   initialSolarIrradiance: number;
@@ -61,7 +61,7 @@ export default function SimulationClient({
     setResetStatus("idle");
     startTransition(async () => {
       try {
-        await runDemoScenarioAction();
+        await resetDemoStateAction();
         setResetStatus("success");
         setIrradiance(50);
         setForecastError(0);
@@ -141,8 +141,8 @@ export default function SimulationClient({
               </div>
               <Slider
                 value={[irradiance]}
-                onValueChange={(v: any) => setIrradiance(v[0])}
-                onValueCommitted={(v: any) => handleUpdate({ solarIrradiance: v[0] })}
+                onValueChange={(v: number | readonly number[]) => setIrradiance(Array.isArray(v) ? v[0] : v)}
+                onValueCommitted={(v: number | readonly number[]) => handleUpdate({ solarIrradiance: Array.isArray(v) ? v[0] : v })}
                 max={100}
                 step={5}
               />
@@ -161,8 +161,8 @@ export default function SimulationClient({
               </div>
               <Slider
                 value={[forecastError]}
-                onValueChange={(v: any) => setForecastError(v[0])}
-                onValueCommitted={(v: any) => handleUpdate({ forecastError: v[0] })}
+                onValueChange={(v: number | readonly number[]) => setForecastError(Array.isArray(v) ? v[0] : v)}
+                onValueCommitted={(v: number | readonly number[]) => handleUpdate({ forecastError: Array.isArray(v) ? v[0] : v })}
                 max={50}
                 step={5}
               />
@@ -187,8 +187,8 @@ export default function SimulationClient({
               </div>
               <Slider
                 value={[baseLoad]}
-                onValueChange={(v: any) => setBaseLoad(v[0])}
-                onValueCommitted={(v: any) => handleUpdate({ baseLoad: v[0] })}
+                onValueChange={(v: number | readonly number[]) => setBaseLoad(Array.isArray(v) ? v[0] : v)}
+                onValueCommitted={(v: number | readonly number[]) => handleUpdate({ baseLoad: Array.isArray(v) ? v[0] : v })}
                 max={50}
                 step={1}
               />

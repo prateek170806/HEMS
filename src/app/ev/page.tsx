@@ -48,7 +48,7 @@ export default async function EVPage() {
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Connection</span>
               <span className={`font-medium flex items-center ${isConnected ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-                <span className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-emerald-600' : 'bg-gray-400'}`}></span>
+                <span className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-emerald-600' : 'bg-muted-foreground'}`}></span>
                 {isConnected ? `${evAppliance!.name}` : 'No EV configured'}
               </span>
             </div>

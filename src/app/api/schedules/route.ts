@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db';
-import { z } from 'zod';
 
 export async function GET() {
   try {
@@ -12,7 +11,7 @@ export async function GET() {
       include: { appliance: true }
     });
     return NextResponse.json(schedules);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

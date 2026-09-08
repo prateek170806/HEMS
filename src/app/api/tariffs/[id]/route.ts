@@ -32,8 +32,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     if (periods) {
-      for (const period of periods) {
-        await prisma.tariffPeriod.update({
+      const updates = periods.map(period => 
+        prisma.tariffPeriod.update({
           where: { id: period.id },
           data: {
             name: period.name,
@@ -42,8 +42,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             pricePerKwh: period.pricePerKwh,
             type: period.type,
           }
-        });
-      }
+        })
+      );
+      await prisma.$transaction(updates);
     }
 
     const updated = await prisma.tariff.findUnique({

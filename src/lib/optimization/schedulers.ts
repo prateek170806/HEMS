@@ -9,6 +9,11 @@ export interface ScheduleResult {
   endTime: Date;
   cost: number;
   explanation: string;
+  reasonCategory?: string;
+  impact?: string;
+  affectedMetric?: string;
+  originalStart?: Date;
+  originalEnd?: Date;
 }
 
 /**
@@ -132,7 +137,12 @@ export function optimizeSchedule(
         startTime: parseTime(date, app.earliestStart || '00:00'),
         endTime: addMinutes(parseTime(date, app.earliestStart || '00:00'), app.minRuntime * 60),
         cost: 0,
-        explanation: `Appliance skipped: EV is disconnected.`
+        explanation: `Appliance skipped: EV is disconnected.`,
+        reasonCategory: 'INFEASIBLE',
+        impact: 'EV schedule ignored',
+        affectedMetric: 'None',
+        originalStart: parseTime(date, app.earliestStart || '00:00'),
+        originalEnd: addMinutes(parseTime(date, app.earliestStart || '00:00'), app.minRuntime * 60)
       });
       continue;
     }
@@ -155,6 +165,9 @@ export function optimizeSchedule(
       // Must start exactly at earliestStart
       bestStartSlot = startSlotIdx;
     } else {
+      let baselineMetrics = { cost: 0, peakPenalty: 0, solarAbsorbed: 0 };
+      let bestMetrics = { cost: 0, peakPenalty: 0, solarAbsorbed: 0 };
+      
       // Slide window to find optimal slot
       for (let i = startSlotIdx; i <= endSlotIdx - requiredSlots; i++) {
         const candidateStartTime = getSlotTime(date, i % 96);
@@ -169,6 +182,11 @@ export function optimizeSchedule(
           endTime: candidateEndTime,
           status: "scheduled",
           reason: null,
+          reasonCategory: null,
+          impact: null,
+          affectedMetric: null,
+          originalStart: null,
+          originalEnd: null,
           estimatedCost: null,
           createdAt: new Date(),
           updatedAt: new Date()
@@ -183,10 +201,12 @@ export function optimizeSchedule(
         let cost = 0;
         let peakPenalty = 0;
         let reservePenalty = 0;
+        let solarAbsorbed = 0;
 
         for (const slot of simResult) {
           const price = getPriceForTime(periods, slot.timestamp);
           cost += slot.gridImportKw * 0.25 * price;
+          solarAbsorbed += Math.max(0, slot.solarKw - slot.gridExportKw) * 0.25;
           
           if (slot.homeDemandKw > household.powerLimitKw) {
             peakPenalty += (slot.homeDemandKw - household.powerLimitKw) * 1000;
@@ -194,6 +214,12 @@ export function optimizeSchedule(
           if (slot.batterySoc < household.batteryReserve) {
             reservePenalty += (household.batteryReserve - slot.batterySoc) * 100;
           }
+        }
+
+        const currentMetrics = { cost, peakPenalty, solarAbsorbed };
+        
+        if (i === startSlotIdx) {
+          baselineMetrics = currentMetrics;
         }
 
         // Comfort Penalty: slight preference for earlier times to avoid unnecessary shifting
@@ -213,6 +239,7 @@ export function optimizeSchedule(
         if (totalScore < minScore) {
           minScore = totalScore;
           bestStartSlot = i;
+          bestMetrics = currentMetrics;
           
           // Re-calculate the isolated appliance cost for the explanation
           let isoCost = 0;
@@ -223,6 +250,12 @@ export function optimizeSchedule(
           bestCost = isoCost;
         }
       }
+      
+      // Store these metrics on the app object temporarily so the outer block can use them
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (app as any)._baselineMetrics = baselineMetrics;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (app as any)._bestMetrics = bestMetrics;
     }
 
     if (bestStartSlot !== -1) {
@@ -238,6 +271,11 @@ export function optimizeSchedule(
         endTime,
         status: "scheduled",
         reason: null,
+        reasonCategory: null,
+        impact: null,
+        affectedMetric: null,
+        originalStart: null,
+        originalEnd: null,
         estimatedCost: bestCost,
         createdAt: new Date(),
         updatedAt: new Date()
@@ -246,14 +284,47 @@ export function optimizeSchedule(
       committedSchedules.push(finalSchedule);
       
       let explanation = `Optimized schedule: Placed at ${format(startTime, 'HH:mm')}.`;
+      let reasonCategory = 'NO_CHANGE_NEEDED';
+      let impact = 'Optimal baseline maintained';
+      let affectedMetric = 'Cost/Peak';
+      
       if (bestStartSlot !== startSlotIdx) {
         let originalCost = 0;
         for (let j = 0; j < requiredSlots; j++) {
           originalCost += getPriceForTime(periods, getSlotTime(date, (startSlotIdx + j) % 96)) * app.ratedPower * 0.25;
         }
-        explanation = `${app.name} shifted from ${format(windowStart, 'HH:mm')} to ${format(startTime, 'HH:mm')}. Reason: shifted to lower cost period (savings of ₹${Math.max(0, originalCost - bestCost).toFixed(2)}) or utilized solar while satisfying power limits.`;
+        const savedCost = Math.max(0, originalCost - bestCost);
+        
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const baselineMetrics = (app as any)._baselineMetrics || { cost: 0, peakPenalty: 0, solarAbsorbed: 0 };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const bestMetrics = (app as any)._bestMetrics || { cost: 0, peakPenalty: 0, solarAbsorbed: 0 };
+
+        const costDiff = baselineMetrics.cost - bestMetrics.cost;
+        const peakDiff = baselineMetrics.peakPenalty - bestMetrics.peakPenalty;
+        const solarDiff = bestMetrics.solarAbsorbed - baselineMetrics.solarAbsorbed;
+
+        if (peakDiff > 0.01) {
+          reasonCategory = 'PEAK_AVOIDANCE';
+          impact = 'Avoided power limit violation';
+          affectedMetric = 'Peak';
+          explanation = `${app.name} shifted from ${format(windowStart, 'HH:mm')} to ${format(startTime, 'HH:mm')}. Reason: Shifted to prevent exceeding the household power limit.`;
+        } else if (solarDiff > 0.01) {
+          reasonCategory = 'SOLAR_UTILIZATION';
+          impact = 'Increased solar usage';
+          affectedMetric = 'Solar';
+          explanation = `${app.name} shifted from ${format(windowStart, 'HH:mm')} to ${format(startTime, 'HH:mm')}. Reason: Shifted to align with available solar generation.`;
+        } else if (savedCost > 0.01 || costDiff > 0.01) {
+          reasonCategory = 'LOWER_TARIFF';
+          impact = `Saved ₹${savedCost.toFixed(2)}`;
+          affectedMetric = 'Cost';
+          explanation = `${app.name} shifted from ${format(windowStart, 'HH:mm')} to ${format(startTime, 'HH:mm')}. Reason: Shifted to a lower cost period (savings of ₹${savedCost.toFixed(2)}).`;
+        } else {
+          reasonCategory = 'NO_CHANGE_NEEDED';
+          explanation = `${app.name} shifted from ${format(windowStart, 'HH:mm')} to ${format(startTime, 'HH:mm')} due to minor comfort/flexibility weights.`;
+        }
       } else {
-        explanation = `${app.name} kept at ${format(startTime, 'HH:mm')}. Reason: Preferred time is already optimal given current tariffs and solar generation.`;
+        explanation = `${app.name} kept at ${format(startTime, 'HH:mm')}. Reason: Preferred time is already optimal given current tariffs and generation.`;
       }
 
       results.push({
@@ -261,7 +332,12 @@ export function optimizeSchedule(
         startTime,
         endTime,
         cost: bestCost,
-        explanation
+        explanation,
+        reasonCategory,
+        impact,
+        affectedMetric,
+        originalStart: windowStart,
+        originalEnd: addMinutes(windowStart, app.minRuntime * 60)
       });
     } else {
       results.push({
@@ -269,7 +345,12 @@ export function optimizeSchedule(
         startTime: windowStart,
         endTime: addMinutes(windowStart, app.minRuntime * 60),
         cost: getPriceForTime(periods, windowStart) * app.minRuntime * app.ratedPower,
-        explanation: `Fallback schedule: Constraints made optimization infeasible. Reverted to earliest start at ${format(windowStart, 'HH:mm')}.`
+        explanation: `Fallback schedule: Constraints made optimization infeasible. Reverted to earliest start at ${format(windowStart, 'HH:mm')}.`,
+        reasonCategory: 'INFEASIBLE',
+        impact: 'Constraint collision, fallback schedule used',
+        affectedMetric: 'Constraint',
+        originalStart: windowStart,
+        originalEnd: addMinutes(windowStart, app.minRuntime * 60)
       });
     }
   }

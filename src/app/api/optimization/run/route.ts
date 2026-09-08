@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/server/db';
+
 import { executeOptimizationRun } from '@/lib/optimization/execute';
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
     const result = await executeOptimizationRun();
     
