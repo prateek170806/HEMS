@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/server/db';
 import { updateApplianceSchema } from '@/lib/validations/appliance';
 
@@ -26,6 +27,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       where: { id },
       data: result.data
     });
+    
+    revalidatePath("/appliances");
+    
     return NextResponse.json(appliance);
   } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

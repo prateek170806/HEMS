@@ -6,6 +6,8 @@ import { EditApplianceDialog } from "@/components/appliances/EditApplianceDialog
 import { AddApplianceDialog } from "@/components/appliances/AddApplianceDialog";
 import { DeleteApplianceButton } from "@/components/appliances/DeleteApplianceButton";
 
+export const dynamic = "force-dynamic";
+
 export default async function AppliancesPage() {
   const household = await prisma.household.findFirst();
   if (!household) return <div>No household configured. Run the demo first.</div>;
