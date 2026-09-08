@@ -22,11 +22,16 @@ function pseudoRandom(seed: number): number {
 
 export function simulateDay(
   date: Date,
-  household: Household,
+  household: Household & { 
+    solarIrradiance?: number; 
+    baseLoad?: number; 
+    forecastError?: number; 
+    inverterFault?: boolean; 
+    evDisconnected?: boolean;
+    smartMeterOffline?: boolean;
+  },
   appliances: Appliance[],
-  schedules: Schedule[],
-  solarFactor: number = 1.0, // 0.0 to 1.0 based on UI irradiance
-  baseLoadMultiplier: number = 1.0
+  schedules: Schedule[]
 ): SimulationResult[] {
   const results: SimulationResult[] = [];
   const start = startOfDay(date);
@@ -44,6 +49,14 @@ export function simulateDay(
   };
 
   const seedBase = date.getTime();
+  
+  // Extract simulation properties from household (with defaults)
+  const solarFactor = (household.solarIrradiance ?? 50) / 50;
+  const baseLoadSetting = household.baseLoad ?? 10;
+  const baseLoadBaseKw = (baseLoadSetting / 10) * 0.5;
+  const forecastError = household.forecastError ?? 0;
+  const inverterFault = household.inverterFault ?? false;
+  const evDisconnected = household.evDisconnected ?? false;
 
   for (let i = 0; i < slots; i++) {
     const slotTime = addMinutes(start, i * 15);
@@ -51,13 +64,14 @@ export function simulateDay(
     
     // 1. Base Load (Deterministic curve with noise)
     // Peaks in morning (7-9) and evening (18-22)
-    let baseLoadKw = 0.3; // Minimum nighttime load
-    if (hour >= 6 && hour < 9) baseLoadKw += Math.sin((hour - 6) * Math.PI / 3) * 0.8;
-    if (hour >= 17 && hour < 23) baseLoadKw += Math.sin((hour - 17) * Math.PI / 6) * 1.5;
+    let baseLoadKw = baseLoadBaseKw * 0.6; // Minimum nighttime load
+    if (hour >= 6 && hour < 9) baseLoadKw += Math.sin((hour - 6) * Math.PI / 3) * (baseLoadBaseKw * 1.6);
+    if (hour >= 17 && hour < 23) baseLoadKw += Math.sin((hour - 17) * Math.PI / 6) * (baseLoadBaseKw * 3.0);
     
-    // Add noise
-    const noise = (pseudoRandom(seedBase + i) - 0.5) * 0.2;
-    baseLoadKw = Math.max(0.1, (baseLoadKw + noise) * baseLoadMultiplier);
+    // Add noise based on forecastError
+    const noiseFactor = 0.2 + (forecastError / 100);
+    const noise = (pseudoRandom(seedBase + i) - 0.5) * noiseFactor * baseLoadBaseKw;
+    baseLoadKw = Math.max(0.1, baseLoadKw + noise);
 
     // 2. Appliance Load
     let applianceLoadKw = 0;
@@ -65,6 +79,10 @@ export function simulateDay(
       if (slotTime >= schedule.startTime && slotTime < schedule.endTime) {
         const appliance = appliances.find(a => a.id === schedule.applianceId);
         if (appliance) {
+          if (appliance.category === 'ev' && evDisconnected) {
+            // EV disconnected fault: EV draws no power
+            continue;
+          }
           applianceLoadKw += appliance.ratedPower;
         }
       }
@@ -74,12 +92,13 @@ export function simulateDay(
 
     // 3. Solar Generation (Parabolic from 6:00 to 18:00)
     let solarKw = 0;
-    if (hour > 6 && hour < 18) {
+    if (!inverterFault && hour > 6 && hour < 18) {
       const peakSolar = 5.0 * solarFactor; // Max 5kW array
       // Parabola centered at 12:00
       solarKw = peakSolar * (1 - Math.pow((hour - 12) / 6, 2));
-      // Cloud noise
-      solarKw *= (0.8 + 0.4 * pseudoRandom(seedBase + i * 2)); 
+      // Cloud noise + forecast error
+      const solarNoise = 0.4 + (forecastError / 50);
+      solarKw *= (1.0 - solarNoise / 2 + solarNoise * pseudoRandom(seedBase + i * 2)); 
     }
     solarKw = Math.max(0, solarKw);
 

@@ -18,7 +18,7 @@ export class SimulationEnergyProvider implements EnergyDataProvider {
     }));
     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rawSim = simulateDay(date, household, appliances, mappedSchedules as any[], 1.0, 1.0);
+    const rawSim = simulateDay(date, household, appliances, mappedSchedules as any[]);
     
     return rawSim.map(s => ({
       timestamp: s.timestamp,

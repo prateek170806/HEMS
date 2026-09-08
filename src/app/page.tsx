@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Battery, Sun, Zap, TrendingDown, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import prisma from "@/lib/prisma";
-import { format } from "date-fns";
+import { format, startOfDay } from "date-fns";
 import { simulateDay } from "@/lib/simulation/engine";
 import { getPriceForTime } from "@/lib/domain/tariff";
 import { DemoButton } from "@/components/demo/DemoButton";
@@ -26,7 +26,7 @@ export default async function Home() {
 
   // Run simulation for today to get dynamic KPIs
   const today = new Date();
-  const simResults = simulateDay(today, household, appliances, schedules, 1.0, 1.0);
+  const simResults = household ? simulateDay(startOfDay(new Date()), household, appliances, schedules) : [];
   
   // Find current slot (based on time of day)
   const currentHour = today.getHours();

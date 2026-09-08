@@ -24,7 +24,7 @@ export default async function AnalyticsPage() {
   const ruleBasedSchedules = tariff ? generateRuleBasedSchedule(appliances, today, tariff.periods) : [];
   // eslint-disable-next-line react-hooks/purity
   const startOpt = Date.now();
-  const optSchedules = tariff ? optimizeSchedule(appliances, today, tariff.periods, household.powerLimitKw, 0.5) : [];
+  const optSchedules = tariff ? optimizeSchedule(appliances, today, tariff.periods, household) : [];
   // eslint-disable-next-line react-hooks/purity
   const optTime = Date.now() - startOpt;
 
@@ -44,9 +44,9 @@ export default async function AnalyticsPage() {
   });
 
   // Run simulation for each to get peak demand and total cost
-  const simBaseline = simulateDay(today, household, appliances, baselineSchedules.map(mapToSchedule), 1.0, 1.0);
-  const simRuleBased = simulateDay(today, household, appliances, ruleBasedSchedules.map(mapToSchedule), 1.0, 1.0);
-  const simOpt = simulateDay(today, household, appliances, optSchedules.map(mapToSchedule), 1.0, 1.0);
+  const simBaseline = simulateDay(today, household, appliances, baselineSchedules.map(mapToSchedule) as never[]);
+  const simRuleBased = simulateDay(today, household, appliances, ruleBasedSchedules.map(mapToSchedule) as never[]);
+  const simOpt = simulateDay(today, household, appliances, optSchedules.map(mapToSchedule) as never[]);
 
   const calculateMetrics = (simResults: { homeDemandKw: number, gridImportKw: number, gridExportKw: number, solarKw: number, timestamp: Date }[]) => {
     let cost = 0;

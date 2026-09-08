@@ -12,6 +12,12 @@ describe('Simulation Engine', () => {
     powerLimitKw: 5.5,
     batteryReserve: 20,
     optimizationMode: 'economic',
+    solarIrradiance: 50,
+    baseLoad: 10,
+    forecastError: 0,
+    smartMeterOffline: false,
+    evDisconnected: false,
+    inverterFault: false,
     createdAt: new Date(),
     updatedAt: new Date()
   };
@@ -36,7 +42,7 @@ describe('Simulation Engine', () => {
 
   it('should generate 96 slots for a full day', () => {
     const today = startOfDay(new Date());
-    const results = simulateDay(today, mockHousehold, [], [], 1.0, 1.0);
+    const results = simulateDay(today, mockHousehold, [], []);
     expect(results.length).toBe(96);
   });
 
@@ -57,7 +63,7 @@ describe('Simulation Engine', () => {
       updatedAt: new Date()
     };
 
-    const results = simulateDay(today, mockHousehold, [mockAppliance], [schedule], 1.0, 1.0);
+    const results = simulateDay(today, mockHousehold, [mockAppliance], [schedule]);
     
     expect(results[40].applianceLoadKw).toBe(2.0);
     expect(results[43].applianceLoadKw).toBe(2.0);
@@ -66,7 +72,7 @@ describe('Simulation Engine', () => {
 
   it('should not let battery drop below reserve SOC', () => {
     const today = startOfDay(new Date());
-    const results = simulateDay(today, mockHousehold, [], [], 0.0, 50.0);
+    const results = simulateDay(today, { ...mockHousehold, solarIrradiance: 0, baseLoad: 500 }, [], []);
     
     for (const slot of results) {
       expect(slot.batterySoc).toBeGreaterThanOrEqual(20);
@@ -75,7 +81,7 @@ describe('Simulation Engine', () => {
 
   it('should correctly balance grid import when demand exceeds solar + battery', () => {
     const today = startOfDay(new Date());
-    const results = simulateDay(today, mockHousehold, [], [], 0.0, 20.0);
+    const results = simulateDay(today, { ...mockHousehold, solarIrradiance: 0, baseLoad: 200 }, [], []);
     
     const slot = results[0]; 
     expect(slot.homeDemandKw).toBeGreaterThan(5);

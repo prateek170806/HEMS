@@ -44,11 +44,11 @@ export async function GET() {
       updatedAt: new Date()
     });
 
-    const simBaseline = simulateDay(today, household, appliances, baselineSchedules.map(mapToSchedule) as never[], 1.0, 1.0);
-    const simRuleBased = simulateDay(today, household, appliances, ruleBasedSchedules.map(mapToSchedule) as never[], 1.0, 1.0);
+    const simBaseline = simulateDay(today, household, appliances, baselineSchedules.map(mapToSchedule) as never[]);
+    const simRuleBased = simulateDay(today, household, appliances, ruleBasedSchedules.map(mapToSchedule) as never[]);
     
     // Use actual DB schedules for the HEMS optimization line
-    const simOpt = simulateDay(today, household, appliances, optSchedules as never[], 1.0, 1.0);
+    const simOpt = simulateDay(today, household, appliances, optSchedules as never[]);
 
     const calculateMetrics = (simResults: { homeDemandKw: number, gridImportKw: number, gridExportKw: number, solarKw: number, timestamp: Date }[]) => {
       let cost = 0;

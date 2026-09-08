@@ -14,6 +14,12 @@ describe('Demo Scenario Verification', () => {
     powerLimitKw: 5.5,
     batteryReserve: 20,
     optimizationMode: 'economic',
+    solarIrradiance: 50,
+    baseLoad: 10,
+    forecastError: 0,
+    smartMeterOffline: false,
+    evDisconnected: false,
+    inverterFault: false,
     createdAt: new Date(),
     updatedAt: new Date()
   };
@@ -59,11 +65,11 @@ describe('Demo Scenario Verification', () => {
   it('Baseline should cost more than Rule-Based, which should cost more or equal to HEMS', () => {
     const baseline = generateBaselineSchedule(appliances, today, mockPeriods);
     const ruleBased = generateRuleBasedSchedule(appliances, today, mockPeriods);
-    const opt = optimizeSchedule(appliances, today, mockPeriods, household.powerLimitKw, 0.5);
-
-    const simBaseline = simulateDay(today, household, appliances, baseline.map(mapToSchedule) as never[], 1.0, 1.0);
-    const simRuleBased = simulateDay(today, household, appliances, ruleBased.map(mapToSchedule) as never[], 1.0, 1.0);
-    const simOpt = simulateDay(today, household, appliances, opt.map(mapToSchedule) as never[], 1.0, 1.0);
+    const schedules = optimizeSchedule(appliances, today, mockPeriods, household);
+    
+    const simBaseline = simulateDay(today, household, appliances, baseline.map(mapToSchedule) as never[]);
+    const simRuleBased = simulateDay(today, household, appliances, ruleBased.map(mapToSchedule) as never[]);
+    const simOpt = simulateDay(today, household, appliances, schedules.map(mapToSchedule) as never[]);
 
     const costBaseline = calculateTotalCost(simBaseline);
     const costRuleBased = calculateTotalCost(simRuleBased);

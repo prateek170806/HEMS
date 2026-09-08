@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Sun, ArrowRight } from "lucide-react";
 import prisma from "@/lib/prisma";
 import { simulateDay } from "@/lib/simulation/engine";
+import { startOfDay } from "date-fns";
 
 export default async function SolarPage() {
   const household = await prisma.household.findFirst();
@@ -12,10 +13,8 @@ export default async function SolarPage() {
     ? await prisma.schedule.findMany({ where: { householdId: household.id } })
     : [];
 
-  const today = new Date();
-  const simResults = household
-    ? simulateDay(today, household, appliances, schedules, 1.0, 1.0)
-    : [];
+  const today = startOfDay(new Date());
+  const simResults = household ? simulateDay(today, household, appliances, schedules) : [];
 
   const currentHour = today.getHours();
   const currentMinute = today.getMinutes();

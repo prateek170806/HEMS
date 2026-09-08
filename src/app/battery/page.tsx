@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import prisma from "@/lib/prisma";
 import { simulateDay } from "@/lib/simulation/engine";
+import { startOfDay } from "date-fns";
 
 export default async function BatteryPage() {
   const household = await prisma.household.findFirst();
@@ -11,9 +12,9 @@ export default async function BatteryPage() {
     ? await prisma.schedule.findMany({ where: { householdId: household.id } })
     : [];
 
-  const today = new Date();
+  const today = startOfDay(new Date());
   const simResults = household
-    ? simulateDay(today, household, appliances, schedules, 1.0, 1.0)
+    ? simulateDay(today, household, appliances, schedules)
     : [];
 
   const currentHour = today.getHours();

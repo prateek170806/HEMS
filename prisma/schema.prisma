@@ -15,6 +15,12 @@ model Household {
   powerLimitKw    Float    @default(5.5)
   batteryReserve  Float    @default(20) // Percentage
   optimizationMode String  @default("economic")
+  solarIrradiance  Float   @default(50) // Percentage 0-100
+  baseLoad         Float   @default(10) // Internal 0-50 mapped to kW
+  forecastError    Float   @default(0)  // Percentage 0-50
+  smartMeterOffline Boolean @default(false)
+  evDisconnected   Boolean @default(false)
+  inverterFault    Boolean @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   

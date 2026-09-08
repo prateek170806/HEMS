@@ -25,6 +25,11 @@ export default async function SchedulesPage() {
     orderBy: { startTime: 'asc' }
   });
 
+  const latestRun = await prisma.optimizationRun.findFirst({
+    where: { householdId: household.id },
+    orderBy: { createdAt: 'desc' }
+  });
+
   const today = new Date();
 
   const decisionLogs: DecisionLogProps['logs'] = schedules.map(s => {
@@ -76,20 +81,25 @@ export default async function SchedulesPage() {
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-3 bg-muted/30 rounded-md">
-                  <span className="text-sm font-medium">Cost Reduction</span>
-                  <span className="text-sm font-semibold text-emerald-600">High (optimizer priority)</span>
+              {latestRun && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center p-3 bg-muted/30 rounded-md border border-emerald-100">
+                    <span className="text-sm font-medium">Estimated Cost</span>
+                    <span className="text-sm font-semibold text-emerald-600">
+                      ₹{latestRun.projectedCost?.toFixed(2) || '0.00'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-muted/30 rounded-md border border-emerald-100">
+                    <span className="text-sm font-medium">Estimated Savings</span>
+                    <span className="text-sm font-semibold text-emerald-600">
+                      ₹{latestRun.savings?.toFixed(2) || '0.00'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground text-center">
+                    Last optimized: {latestRun.createdAt.toLocaleString()}
+                  </div>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-muted/30 rounded-md">
-                  <span className="text-sm font-medium">Peak Reduction</span>
-                  <span className="text-sm font-semibold text-amber-600">Active (power limit enforced)</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-muted/30 rounded-md">
-                  <span className="text-sm font-medium">Comfort Protection</span>
-                  <span className="text-sm font-semibold text-blue-600">High (windows respected)</span>
-                </div>
-              </div>
+              )}
 
               <RunOptimizationButton />
             </CardContent>
