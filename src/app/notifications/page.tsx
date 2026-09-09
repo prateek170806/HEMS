@@ -1,8 +1,9 @@
+import { getCurrentHousehold } from "@/lib/server/auth";
 import prisma from "@/lib/prisma";
 import { NotificationList } from "./NotificationList";
 
 export default async function NotificationsPage() {
-  const household = await prisma.household.findFirst();
+  const household = await getCurrentHousehold();
   
   if (!household) {
     return <div>No household configured.</div>;

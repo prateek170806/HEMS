@@ -1,8 +1,8 @@
-import { prisma } from "@/lib/server/db";
+import { getCurrentHousehold } from "@/lib/server/auth";
 import SimulationClient from "./components/SimulationClient";
 
 export default async function SimulationPage() {
-  const household = await prisma.household.findFirst();
+  const household = await getCurrentHousehold();
   if (!household) {
     return <div>No household found.</div>;
   }

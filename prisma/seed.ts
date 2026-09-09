@@ -14,9 +14,21 @@ async function main() {
   await prisma.appliance.deleteMany()
   await prisma.household.deleteMany()
 
+  await prisma.user.deleteMany()
+
+  const user = await prisma.user.create({
+    data: {
+      customerId: 'demo-123',
+      name: 'Demo User',
+      email: 'demo@wattwise.local',
+      passwordHash: 'dummy',
+    }
+  })
+
   // 1. Create Household
   const household = await prisma.household.create({
     data: {
+      userId: user.id,
       name: 'Green Valley Residence',
       timezone: 'Asia/Kolkata',
       currency: 'INR',

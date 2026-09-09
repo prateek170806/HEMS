@@ -4,10 +4,11 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 import { executeOptimizationRun } from "@/lib/optimization/execute";
+import { getCurrentHousehold, getCurrentUser } from "@/lib/server/auth";
+import { z } from "zod";
 
 export async function runOptimizationAction() {
-  console.log("Running optimization action...");
-  
+
   const result = await executeOptimizationRun();
 
   // 4. Revalidate UI
@@ -20,11 +21,11 @@ export async function runOptimizationAction() {
 }
 
 export async function overrideScheduleAction(applianceId: string) {
-  const household = await prisma.household.findFirst();
+  const household = await getCurrentHousehold();
   if (!household) throw new Error("No household found");
 
-  const appliance = await prisma.appliance.findUnique({
-    where: { id: applianceId }
+  const appliance = await prisma.appliance.findFirst({
+    where: { id: applianceId, householdId: household.id }
   });
   if (!appliance) throw new Error("Appliance not found");
 
@@ -60,25 +61,30 @@ export async function overrideScheduleAction(applianceId: string) {
 }
 
 export async function resetDemoStateAction() {
-  console.log("Running demo scenario reset...");
 
-  // NOTE: This is a single-tenant application. There is exactly one household per
-  // deployment. The deleteMany() calls below wipe ALL data intentionally — this is
-  // a full demo reset, not a per-household filter. Calling this will destroy the
-  // current household configuration and replace it with the canonical demo scenario.
-  // Do NOT call this in a multi-tenant deployment without adding householdId filters.
+  const user = await getCurrentUser();
+  if (!user || user.email !== "demo@wattwise.local") {
+     throw new Error("Demo reset is only available for the authorized Demo account.");
+  }
 
-  // Clean up — intentional full reset for single-tenant demo deployment
-  await prisma.schedule.deleteMany();
-  await prisma.optimizationRun.deleteMany();
-  await prisma.meterReading.deleteMany();
-  await prisma.tariffPeriod.deleteMany();
-  await prisma.tariff.deleteMany();
-  await prisma.appliance.deleteMany();
-  await prisma.household.deleteMany();
+  const household = await prisma.household.findFirst({ where: { userId: user.id } });
+  if (!household) throw new Error("No household found for demo account");
 
-  // Create Household
-  const household = await prisma.household.create({
+  // Safely delete ONLY data belonging to THIS household
+  await prisma.schedule.deleteMany({ where: { householdId: household.id } });
+  await prisma.optimizationRun.deleteMany({ where: { householdId: household.id } });
+  await prisma.meterReading.deleteMany({ where: { householdId: household.id } });
+  await prisma.notification.deleteMany({ where: { householdId: household.id } });
+  
+  const tariffs = await prisma.tariff.findMany({ where: { householdId: household.id } });
+  const tariffIds = tariffs.map(t => t.id);
+  await prisma.tariffPeriod.deleteMany({ where: { tariffId: { in: tariffIds } } });
+  await prisma.tariff.deleteMany({ where: { householdId: household.id } });
+  await prisma.appliance.deleteMany({ where: { householdId: household.id } });
+
+  // Update Household back to canonical demo state
+  await prisma.household.update({
+    where: { id: household.id },
     data: {
       name: 'Green Valley Residence',
       timezone: 'Asia/Kolkata',
@@ -88,6 +94,11 @@ export async function resetDemoStateAction() {
       optimizationMode: 'economic',
       solarIrradiance: 800,
       baseLoad: 0.5,
+      simulationStatus: 'LIVE',
+      simulationSpeed: 1,
+      simulationTime: new Date(),
+      simulationLastTick: new Date(),
+      currentBatterySoc: 20
     },
   });
 
@@ -165,6 +176,15 @@ export async function resetDemoStateAction() {
   return { success: true };
 }
 
+const updateSimulationStateSchema = z.object({
+  solarIrradiance: z.number().optional(),
+  baseLoad: z.number().optional(),
+  forecastError: z.number().optional(),
+  smartMeterOffline: z.boolean().optional(),
+  evDisconnected: z.boolean().optional(),
+  inverterFault: z.boolean().optional(),
+}).strict();
+
 export async function updateSimulationStateAction(data: {
   solarIrradiance?: number;
   baseLoad?: number;
@@ -173,12 +193,17 @@ export async function updateSimulationStateAction(data: {
   evDisconnected?: boolean;
   inverterFault?: boolean;
 }) {
-  const household = await prisma.household.findFirst();
+  const household = await getCurrentHousehold();
   if (!household) throw new Error("No household found");
+
+  const parsed = updateSimulationStateSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error("Invalid simulation state data");
+  }
 
   await prisma.household.update({
     where: { id: household.id },
-    data,
+    data: parsed.data,
   });
 
   revalidatePath("/");
@@ -188,3 +213,41 @@ export async function updateSimulationStateAction(data: {
   return { success: true };
 }
 
+export async function getNotificationsAction() {
+  const household = await getCurrentHousehold();
+  if (!household) return [];
+  
+  return await prisma.notification.findMany({
+    where: { householdId: household.id },
+    orderBy: { timestamp: "desc" },
+    take: 10,
+  });
+}
+
+export async function markNotificationReadAction(notificationId: string) {
+  const household = await getCurrentHousehold();
+  if (!household) throw new Error("No household found");
+  
+  await prisma.notification.update({
+    where: { id: notificationId, householdId: household.id },
+    data: { isRead: true },
+  });
+  
+  revalidatePath("/");
+  revalidatePath("/notifications");
+  return { success: true };
+}
+
+export async function markAllNotificationsReadAction() {
+  const household = await getCurrentHousehold();
+  if (!household) throw new Error("No household found");
+  
+  await prisma.notification.updateMany({
+    where: { householdId: household.id, isRead: false },
+    data: { isRead: true },
+  });
+  
+  revalidatePath("/");
+  revalidatePath("/notifications");
+  return { success: true };
+}

@@ -16,10 +16,20 @@ async function seedDemoData() {
   await prisma.tariffPeriod.deleteMany();
   await prisma.tariff.deleteMany();
   await prisma.appliance.deleteMany();
-  await prisma.household.deleteMany();
+  await prisma.user.deleteMany();
+
+  const user = await prisma.user.create({
+    data: {
+      customerId: 'phase5-user',
+      name: 'Phase 5 User',
+      email: 'phase5@test.local',
+      passwordHash: 'dummy',
+    }
+  });
 
   const household = await prisma.household.create({
     data: {
+      userId: user.id,
       name: 'Green Valley Residence',
       timezone: 'Asia/Kolkata',
       currency: 'INR',

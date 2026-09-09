@@ -1,8 +1,9 @@
+import { getCurrentHousehold } from "@/lib/server/auth";
 import prisma from "@/lib/prisma";
 import { DemoClient } from "./DemoClient";
 
 export default async function DemoPage() {
-  const household = await prisma.household.findFirst();
+  const household = await getCurrentHousehold();
   
   const appliances = household 
     ? await prisma.appliance.findMany({ where: { householdId: household.id } })

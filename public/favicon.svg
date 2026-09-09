@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- House Outline -->
+  <path d="M32 8L6 28v24a4 4 0 0 0 4 4h44a4 4 0 0 0 4-4V28L32 8z" stroke="#10b981" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- Lightning Bolt -->
+  <path d="M36 20L22 40h10v12l14-20H36V20z" fill="#059669" stroke="#059669" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Leaf (Bottom Right) -->
+  <path d="M42 42c0 0-10 2-10 12 10 0 12-10 12-10s-2-2-2-2z" fill="#10b981"/>
+</svg>

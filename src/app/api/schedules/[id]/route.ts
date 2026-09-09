@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db';
+import { getCurrentHousehold } from '@/lib/server/auth';
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -8,8 +9,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     
     // Specifically handle the manual override
     if (body.action === 'override') {
-      const scheduleToOverride = await prisma.schedule.findUnique({
-        where: { id },
+      const household = await getCurrentHousehold();
+      if (!household) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+      const scheduleToOverride = await prisma.schedule.findFirst({
+        where: { id, householdId: household.id },
         include: { appliance: true }
       });
 

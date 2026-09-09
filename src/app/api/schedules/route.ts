@@ -1,9 +1,10 @@
+import { getCurrentHousehold } from "@/lib/server/auth";
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db';
 
 export async function GET() {
   try {
-    const household = await prisma.household.findFirst();
+    const household = await getCurrentHousehold();
     if (!household) return NextResponse.json({ error: 'Household not found' }, { status: 404 });
 
     const schedules = await prisma.schedule.findMany({

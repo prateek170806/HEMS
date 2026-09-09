@@ -7,8 +7,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id             String      @id @default(uuid())
+  customerId     String      @unique
+  name           String
+  email          String      @unique
+  passwordHash   String
+  avatarInitials String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  households     Household[]
+}
+
 model Household {
   id                String            @id @default(uuid())
+  userId            String            @unique
+  user              User              @relation(fields: [userId], references: [id])
   name              String
   timezone          String            @default("Asia/Kolkata")
   currency          String            @default("INR")
@@ -23,6 +37,11 @@ model Household {
   inverterFault     Boolean           @default(false)
   smartMeterOffline Boolean           @default(false)
   solarIrradiance   Float             @default(50)
+  simulationStatus  String            @default("LIVE")
+  simulationSpeed   Float             @default(1.0)
+  simulationTime    DateTime          @default(now())
+  simulationLastTick DateTime         @default(now())
+  currentBatterySoc Float             @default(20.0)
   appliances        Appliance[]
   meterReadings     MeterReading[]
   notifications     Notification[]
@@ -49,6 +68,8 @@ model Appliance {
   updatedAt         DateTime   @updatedAt
   household         Household  @relation(fields: [householdId], references: [id])
   schedules         Schedule[]
+
+  @@index([householdId])
 }
 
 model Tariff {
@@ -60,6 +81,8 @@ model Tariff {
   updatedAt   DateTime       @updatedAt
   household   Household      @relation(fields: [householdId], references: [id])
   periods     TariffPeriod[]
+
+  @@index([householdId])
 }
 
 model TariffPeriod {
@@ -86,6 +109,8 @@ model MeterReading {
   homeDemandKw Float     @default(0)
   createdAt    DateTime  @default(now())
   household    Household @relation(fields: [householdId], references: [id])
+
+  @@index([householdId])
 }
 
 model Notification {
@@ -96,6 +121,8 @@ model Notification {
   isRead      Boolean   @default(false)
   timestamp   DateTime  @default(now())
   household   Household @relation(fields: [householdId], references: [id])
+
+  @@index([householdId])
 }
 
 model OptimizationRun {
@@ -123,6 +150,8 @@ model OptimizationRun {
   ruleBasedSolarUsage Float?
   household           Household  @relation(fields: [householdId], references: [id])
   schedules           Schedule[]
+
+  @@index([householdId])
 }
 
 model Schedule {
@@ -145,4 +174,6 @@ model Schedule {
   appliance      Appliance        @relation(fields: [applianceId], references: [id])
   household      Household        @relation(fields: [householdId], references: [id])
   optimization   OptimizationRun? @relation(fields: [optimizationId], references: [id])
+
+  @@index([householdId])
 }

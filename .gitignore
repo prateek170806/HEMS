@@ -30,8 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-# .env* (Commented out to allow Vercel to read .env for SQLite)
+# env files (must not be committed — use .env.example for documentation)
+.env
+.env.*
+!.env.example
 
 # vercel
 .vercel

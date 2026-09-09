@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { resetDemoStateAction } from "@/app/actions";
+import { runOptimizationAction } from "@/app/actions";
 import { useState } from "react";
 import { Play } from "lucide-react";
 
@@ -11,8 +11,7 @@ export function DemoButton() {
   const handleDemo = async () => {
     setLoading(true);
     try {
-      await resetDemoStateAction();
-      window.location.reload();
+      await runOptimizationAction();
     } finally {
       setLoading(false);
     }

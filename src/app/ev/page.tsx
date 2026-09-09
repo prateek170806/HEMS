@@ -1,10 +1,11 @@
+import { getCurrentHousehold } from "@/lib/server/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, ZapOff, Zap } from "lucide-react";
 import prisma from "@/lib/prisma";
 import { EVOverrideButton } from "@/components/ev/EVOverrideButton";
 
 export default async function EVPage() {
-  const household = await prisma.household.findFirst();
+  const household = await getCurrentHousehold();
 
   const evAppliance = household
     ? await prisma.appliance.findFirst({
@@ -92,7 +93,7 @@ export default async function EVPage() {
 
         <Card className={isOverridden ? "border-emerald-500/20 bg-emerald-500/5" : "border-amber-500/20 bg-amber-500/5"}>
           <CardHeader>
-            <CardTitle className={isOverridden ? "text-emerald-700" : "text-amber-700"}>HEMS Action</CardTitle>
+            <CardTitle className={isOverridden ? "text-emerald-700" : "text-amber-700"}>WattWise Action</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {evAppliance ? (

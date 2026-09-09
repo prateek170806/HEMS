@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db';
 import { z } from 'zod';
+import { getCurrentHousehold } from '@/lib/server/auth';
 
 const updateTariffPeriodSchema = z.object({
   id: z.string(),
@@ -26,6 +27,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     const { name, periods } = result.data;
+    const household = await getCurrentHousehold();
+    if (!household) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const existingTariff = await prisma.tariff.findFirst({ where: { id, householdId: household.id } });
+    if (!existingTariff) return NextResponse.json({ error: 'Tariff not found' }, { status: 404 });
 
     if (name) {
       await prisma.tariff.update({ where: { id }, data: { name } });
@@ -33,8 +39,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     if (periods) {
       const updates = periods.map(period => 
-        prisma.tariffPeriod.update({
-          where: { id: period.id },
+        prisma.tariffPeriod.updateMany({
+          where: { id: period.id, tariffId: id },
           data: {
             name: period.name,
             startTime: period.startTime,

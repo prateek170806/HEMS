@@ -15,10 +15,20 @@ async function seedCanonical(powerLimit = 5.5, solarIrradiance = 800) {
   await prisma.tariffPeriod.deleteMany();
   await prisma.tariff.deleteMany();
   await prisma.appliance.deleteMany();
-  await prisma.household.deleteMany();
+  await prisma.user.deleteMany();
+
+  const user = await prisma.user.create({
+    data: {
+      customerId: 'phase6-user',
+      name: 'Phase 6 User',
+      email: 'phase6@test.local',
+      passwordHash: 'dummy',
+    }
+  });
 
   const hh = await prisma.household.create({
     data: {
+      userId: user.id,
       name: 'E2E Test Household',
       timezone: 'Asia/Kolkata',
       currency: 'INR',

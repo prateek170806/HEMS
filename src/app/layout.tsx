@@ -8,8 +8,11 @@ import { Topbar } from "@/components/layout/Topbar";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "HEMS — Smart Home Energy Management",
-  description: "Tariff-aware smart home energy management for intelligent residential load scheduling, energy optimization, solar, battery and EV coordination.",
+  title: "WattWise — Smart Home Energy Management",
+  description: "Monitor, simulate, and optimize your home energy with WattWise.",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 import { ThemeProvider } from "@/components/theme-provider";

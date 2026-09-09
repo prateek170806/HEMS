@@ -1,8 +1,8 @@
-import prisma from "@/lib/prisma";
+import { getCurrentHousehold } from "@/lib/server/auth";
 import { SettingsForm } from "./SettingsForm";
 
 export default async function SettingsPage() {
-  const household = await prisma.household.findFirst();
+  const household = await getCurrentHousehold();
   
   if (!household) {
     return <div>No household configured.</div>;

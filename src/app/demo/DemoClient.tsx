@@ -56,7 +56,7 @@ export function DemoClient({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            <span className="text-emerald-500">HEMS</span> SIH Demonstration Mode
+            <span className="text-emerald-500">WattWise</span> SIH Demonstration Mode
           </h1>
           <p className="text-muted-foreground mt-1">
             Controlled scenario runner to demonstrate the dynamic optimization engine.

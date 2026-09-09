@@ -1,3 +1,4 @@
+import { getCurrentHousehold } from "@/lib/server/auth";
 import { prisma } from "@/lib/server/db";
 import { optimizeSchedule, generateBaselineSchedule, generateRuleBasedSchedule } from "@/lib/optimization/schedulers";
 import { startOfDay } from "date-fns";
@@ -6,7 +7,7 @@ import { getPriceForTime } from "@/lib/domain/tariff";
 import { TariffPeriod, Schedule } from "@prisma/client";
 
 export async function executeOptimizationRun() {
-  const household = await prisma.household.findFirst();
+  const household = await getCurrentHousehold();
   if (!household) throw new Error("Household not found");
 
   const appliances = await prisma.appliance.findMany({ where: { householdId: household.id } });

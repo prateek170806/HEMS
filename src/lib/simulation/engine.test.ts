@@ -6,6 +6,7 @@ import { startOfDay } from 'date-fns';
 describe('Simulation Engine', () => {
   const mockHousehold: Household = {
     id: '1',
+    userId: 'dummy_user',
     name: 'Test Home',
     timezone: 'Asia/Kolkata',
     currency: 'INR',
@@ -19,7 +20,12 @@ describe('Simulation Engine', () => {
     evDisconnected: false,
     inverterFault: false,
     createdAt: new Date(),
-    updatedAt: new Date()
+    updatedAt: new Date(),
+    simulationStatus: 'LIVE',
+    simulationSpeed: 1,
+    simulationTime: new Date(),
+    simulationLastTick: new Date(),
+    currentBatterySoc: 20
   };
 
   const mockAppliance: Appliance = {

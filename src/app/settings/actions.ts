@@ -1,4 +1,5 @@
 "use server";
+import { getCurrentHousehold } from "@/lib/server/auth";
 
 import { z } from "zod";
 import prisma from "@/lib/prisma";
@@ -19,7 +20,7 @@ export async function updateSettingsAction(data: SettingsFormData) {
     return { success: false, errors: result.error.flatten().fieldErrors };
   }
 
-  const household = await prisma.household.findFirst();
+  const household = await getCurrentHousehold();
   if (!household) {
     return { success: false, message: "Household not found" };
   }

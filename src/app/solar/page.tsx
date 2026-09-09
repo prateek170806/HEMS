@@ -1,3 +1,4 @@
+import { getCurrentHousehold } from "@/lib/server/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sun, ArrowRight } from "lucide-react";
 import prisma from "@/lib/prisma";
@@ -5,7 +6,7 @@ import { simulateDay } from "@/lib/simulation/engine";
 import { startOfDay } from "date-fns";
 
 export default async function SolarPage() {
-  const household = await prisma.household.findFirst();
+  const household = await getCurrentHousehold();
   const appliances = household
     ? await prisma.appliance.findMany({ where: { householdId: household.id } })
     : [];

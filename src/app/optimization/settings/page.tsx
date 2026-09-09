@@ -1,3 +1,4 @@
+import { getCurrentHousehold } from "@/lib/server/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RunOptimizationButton } from "@/components/optimization/RunOptimizationButton";
 import { DecisionLog, DecisionLogProps } from "@/components/optimization/DecisionLog";
@@ -11,7 +12,7 @@ function parseTime(baseDate: Date, timeStr: string): Date {
 }
 
 export default async function SchedulesPage() {
-  const household = await prisma.household.findFirst();
+  const household = await getCurrentHousehold();
   if (!household) return <div>No household configured.</div>;
 
   const tariff = await prisma.tariff.findFirst({
@@ -69,7 +70,7 @@ export default async function SchedulesPage() {
           <Card>
             <CardHeader>
               <CardTitle>Optimization Strategy</CardTitle>
-              <CardDescription>Configure how HEMS schedules your flexible loads.</CardDescription>
+              <CardDescription>Configure how WattWise schedules your flexible loads.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">

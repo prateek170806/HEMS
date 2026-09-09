@@ -1,8 +1,12 @@
-import { Bell, UserCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "./NotificationBell";
+import { ProfileMenu } from "./ProfileMenu";
 
-export function Topbar() {
+import { auth } from "../../../auth";
+
+export async function Topbar() {
+  const session = await auth();
+  
   return (
     <header className="sticky top-0 z-10 flex h-16 flex-shrink-0 items-center gap-x-4 border-b bg-background px-4 sm:gap-x-6 sm:px-6 lg:px-8">
       <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
@@ -16,16 +20,9 @@ export function Topbar() {
         </div>
         <div className="flex items-center gap-x-4 lg:gap-x-6">
           <ThemeToggle />
-          <Button variant="ghost" size="icon" className="relative">
-            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-destructive"></span>
-            <Bell className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-            <span className="sr-only">View notifications</span>
-          </Button>
+          <NotificationBell />
           <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-border" aria-hidden="true" />
-          <Button variant="ghost" size="icon">
-            <UserCircle className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-            <span className="sr-only">User profile</span>
-          </Button>
+          <ProfileMenu user={session?.user} />
         </div>
       </div>
     </header>

@@ -1,3 +1,4 @@
+import { getCurrentHousehold } from "@/lib/server/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import prisma from "@/lib/prisma";
@@ -9,7 +10,7 @@ import { DeleteApplianceButton } from "@/components/appliances/DeleteApplianceBu
 export const dynamic = "force-dynamic";
 
 export default async function AppliancesPage() {
-  const household = await prisma.household.findFirst();
+  const household = await getCurrentHousehold();
   if (!household) return <div>No household configured. Run the demo first.</div>;
 
   const appliances = await prisma.appliance.findMany({

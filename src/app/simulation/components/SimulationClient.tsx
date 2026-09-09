@@ -86,7 +86,7 @@ export default function SimulationClient({
             {isSaving && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
           </h2>
           <p className="text-muted-foreground">
-            Test the HEMS system under different scenarios. Changes automatically affect the optimizer.
+            Test the WattWise system under different scenarios. Changes automatically affect the optimizer.
           </p>
         </div>
         <Button variant="outline" onClick={handleReset} disabled={isPending}>

@@ -1,10 +1,11 @@
+import { getCurrentHousehold } from "@/lib/server/auth";
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db';
 import { applianceSchema } from '@/lib/validations/appliance';
 
 export async function GET() {
   try {
-    const household = await prisma.household.findFirst();
+    const household = await getCurrentHousehold();
     if (!household) return NextResponse.json({ error: 'Household not found' }, { status: 404 });
 
     const appliances = await prisma.appliance.findMany({
@@ -18,7 +19,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const household = await prisma.household.findFirst();
+    const household = await getCurrentHousehold();
     if (!household) return NextResponse.json({ error: 'Household not found' }, { status: 404 });
 
     const body = await req.json();

@@ -8,6 +8,7 @@ import { getPriceForTime } from '../domain/tariff';
 describe('Demo Scenario Verification', () => {
   const household: Household = {
     id: 'h1',
+    userId: 'dummy_user',
     name: 'Green Valley Residence',
     timezone: 'Asia/Kolkata',
     currency: 'INR',
@@ -21,7 +22,12 @@ describe('Demo Scenario Verification', () => {
     evDisconnected: false,
     inverterFault: false,
     createdAt: new Date(),
-    updatedAt: new Date()
+    updatedAt: new Date(),
+    simulationStatus: 'LIVE',
+    simulationSpeed: 1,
+    simulationTime: new Date(),
+    simulationLastTick: new Date(),
+    currentBatterySoc: 20
   };
 
   const mockPeriods: TariffPeriod[] = [

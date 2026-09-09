@@ -1,11 +1,15 @@
 "use server";
+import { getCurrentHousehold } from "@/lib/server/auth";
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 export async function markAsReadAction(id: string) {
-  await prisma.notification.update({
-    where: { id },
+  const household = await getCurrentHousehold();
+  if (!household) throw new Error("No household found");
+
+  await prisma.notification.updateMany({
+    where: { id, householdId: household.id },
     data: { isRead: true }
   });
   revalidatePath("/notifications");
@@ -13,7 +17,7 @@ export async function markAsReadAction(id: string) {
 }
 
 export async function markAllAsReadAction() {
-  const household = await prisma.household.findFirst();
+  const household = await getCurrentHousehold();
   if (!household) throw new Error("No household found");
 
   await prisma.notification.updateMany({
@@ -25,7 +29,7 @@ export async function markAllAsReadAction() {
 }
 
 export async function clearNotificationsAction() {
-  const household = await prisma.household.findFirst();
+  const household = await getCurrentHousehold();
   if (!household) throw new Error("No household found");
 
   await prisma.notification.deleteMany({
