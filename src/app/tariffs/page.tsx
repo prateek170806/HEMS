@@ -2,21 +2,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import prisma from "@/lib/prisma";
 import { EditTariffDialog } from "@/components/tariffs/EditTariffDialog";
+import { getCurrentHousehold } from "@/lib/server/auth";
+import { TariffRepository } from "@/lib/server/repositories/tariff.repository";
 
 export default async function TariffsPage() {
-  const tariff = await prisma.tariff.findFirst({
-    include: { periods: { orderBy: { startTime: 'asc' } } }
-  });
-
-  if (!tariff) {
+  const household = await getCurrentHousehold();
+  if (!household) {
     return (
       <div className="space-y-6">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Tariff Management</h2>
-          <p className="text-muted-foreground">No tariff configured. Run the Demo Scenario from the Overview page.</p>
+          <p className="text-muted-foreground">No household configured. Please log in first.</p>
         </div>
       </div>
     );
+  }
+
+  let tariff = await prisma.tariff.findFirst({
+    where: { householdId: household.id, isActive: true },
+    include: { periods: { orderBy: { startTime: 'asc' } } }
+  });
+
+  // If no active tariff exists for this household, safely initialize default tenant tariff
+  if (!tariff) {
+    tariff = await TariffRepository.createDefault(household.id, "Standard TOU Tariff");
   }
 
   return (
@@ -24,23 +33,30 @@ export default async function TariffsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Tariff Management</h2>
-          <p className="text-muted-foreground">Configure your Time-of-Use electricity pricing.</p>
+          <p className="text-muted-foreground">Configure your Time-of-Use electricity pricing structure.</p>
         </div>
         <EditTariffDialog tariff={tariff} />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Current Tariff: {tariff?.name}</CardTitle>
-          <CardDescription>24-hour timeline — hover to see prices</CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Current Tariff: {tariff.name}</CardTitle>
+              <CardDescription>24-hour timeline — hover over segments to see prices</CardDescription>
+            </div>
+            <Badge variant={tariff.isActive ? "default" : "secondary"}>
+              {tariff.isActive ? "Active" : "Inactive"}
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-8">
             <div className="relative h-24 w-full rounded-md border overflow-hidden flex">
-              {tariff?.periods.map((period) => {
+              {tariff.periods.map((period) => {
                 const startH = parseInt(period.startTime.split(':')[0]);
                 const endH = parseInt(period.endTime.split(':')[0]) || 24;
-                const widthPercent = ((endH - startH) / 24) * 100;
+                const widthPercent = Math.max(5, ((endH - startH) / 24) * 100);
 
                 let bgColor = "bg-green-100 dark:bg-green-900/30";
                 if (period.type === 'normal') bgColor = "bg-blue-100 dark:bg-blue-900/30";
@@ -54,20 +70,20 @@ export default async function TariffsPage() {
                     className={`${bgColor} h-full border-r last:border-r-0 relative group flex flex-col justify-end p-2`}
                   >
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-background/80 transition-opacity font-medium">
-                      ₹{period.pricePerKwh.toFixed(2)}
+                      ₹{period.pricePerKwh.toFixed(2)} / kWh
                     </div>
                     <div className="text-xs font-medium truncate">{period.name}</div>
                     <div className="text-[10px] text-muted-foreground truncate">
                       {period.startTime}-{period.endTime}
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {tariff?.periods.map(period => (
-                <div key={period.id} className="border rounded-lg p-4">
+              {tariff.periods.map(period => (
+                <div key={period.id} className="border rounded-lg p-4 bg-card">
                   <div className="flex justify-between items-start mb-2">
                     <div className="font-semibold">{period.name}</div>
                     <Badge variant={period.type === 'peak' ? 'destructive' : 'outline'} className="uppercase text-[10px]">

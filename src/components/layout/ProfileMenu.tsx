@@ -1,7 +1,6 @@
 "use client";
 
 import { UserCircle, Settings, Monitor, LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,7 +23,7 @@ interface ProfileMenuProps {
     name?: string | null;
     email?: string | null;
     image?: string | null;
-  };
+  } | null;
 }
 
 export function ProfileMenu({ user }: ProfileMenuProps) {
@@ -33,42 +32,52 @@ export function ProfileMenu({ user }: ProfileMenuProps) {
 
   if (!user) return null;
 
+  const initials =
+    user.image ||
+    (user.name
+      ? user.name
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 2)
+      : "U");
+
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="Profile menu" />}>
-        {user.image ? (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">
-            {user.image}
-          </div>
-        ) : (
-          <UserCircle className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-        )}
+      <DropdownMenuTrigger
+        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full"
+        aria-label="Profile menu"
+      >
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold shadow-sm hover:opacity-90 transition-opacity cursor-pointer">
+          {initials}
+        </div>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-56 p-2 shadow-lg rounded-xl">
+        <DropdownMenuLabel className="p-2 font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.name || 'Customer'}</p>
-            <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+            <p className="text-sm font-semibold leading-none text-foreground">{user.name || "Customer"}</p>
+            <p className="text-xs leading-none text-muted-foreground pt-1">{user.email}</p>
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="my-1" />
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={() => router.push("/profile")} className="cursor-pointer">
-            <UserCircle className="mr-2 h-4 w-4" />
+          <DropdownMenuItem onClick={() => router.push("/profile")} className="cursor-pointer py-2 px-2.5 text-sm">
+            <UserCircle className="mr-2.5 h-4 w-4 text-muted-foreground" />
             <span>My Profile</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push("/settings")} className="cursor-pointer">
-            <Settings className="mr-2 h-4 w-4" />
+          <DropdownMenuItem onClick={() => router.push("/settings")} className="cursor-pointer py-2 px-2.5 text-sm">
+            <Settings className="mr-2.5 h-4 w-4 text-muted-foreground" />
             <span>Settings</span>
           </DropdownMenuItem>
-          
+
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <Monitor className="mr-2 h-4 w-4" />
-              <span>Theme Preference</span>
+            <DropdownMenuSubTrigger className="py-2 px-2.5 text-sm">
+              <Monitor className="mr-2.5 h-4 w-4 text-muted-foreground" />
+              <span>Theme</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuPortal>
-              <DropdownMenuSubContent>
+              <DropdownMenuSubContent className="w-36">
                 <DropdownMenuItem onClick={() => setTheme("light")} className="cursor-pointer">
                   Light
                 </DropdownMenuItem>
@@ -82,13 +91,15 @@ export function ProfileMenu({ user }: ProfileMenuProps) {
             </DropdownMenuPortal>
           </DropdownMenuSub>
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem 
-          className="cursor-pointer text-destructive focus:text-destructive"
-          onClick={() => { logoutAction(); }}
+        <DropdownMenuSeparator className="my-1" />
+        <DropdownMenuItem
+          className="cursor-pointer py-2 px-2.5 text-sm text-destructive focus:text-destructive focus:bg-destructive/10"
+          onClick={() => {
+            logoutAction();
+          }}
         >
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Logout</span>
+          <LogOut className="mr-2.5 h-4 w-4 text-destructive" />
+          <span className="font-medium">Logout</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

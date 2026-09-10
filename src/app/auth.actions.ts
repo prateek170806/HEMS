@@ -4,6 +4,7 @@ import { signIn, signOut } from "../../auth";
 import { AuthError } from "next-auth";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { TariffRepository } from "@/lib/server/repositories/tariff.repository";
 
 export async function loginAction(formData: FormData) {
   try {
@@ -56,7 +57,7 @@ export async function registerAction(formData: FormData) {
     });
 
     // Create default household for the new customer
-    await prisma.household.create({
+    const household = await prisma.household.create({
       data: {
         name: `${name}'s Household`,
         userId: user.id,
@@ -66,6 +67,9 @@ export async function registerAction(formData: FormData) {
         batteryReserve: 20,
       }
     });
+
+    // Create default active Time-of-Use tariff for the household
+    await TariffRepository.createDefault(household.id, "Standard TOU Tariff");
 
     await signIn("credentials", {
       email,

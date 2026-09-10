@@ -66,7 +66,7 @@ model Appliance {
   automationEnabled Boolean    @default(true)
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
-  household         Household  @relation(fields: [householdId], references: [id])
+  household         Household  @relation(fields: [householdId], references: [id], onDelete: Cascade)
   schedules         Schedule[]
 
   @@index([householdId])
@@ -79,7 +79,7 @@ model Tariff {
   isActive    Boolean        @default(true)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
-  household   Household      @relation(fields: [householdId], references: [id])
+  household   Household      @relation(fields: [householdId], references: [id], onDelete: Cascade)
   periods     TariffPeriod[]
 
   @@index([householdId])
@@ -95,7 +95,7 @@ model TariffPeriod {
   type        String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  tariff      Tariff   @relation(fields: [tariffId], references: [id])
+  tariff      Tariff   @relation(fields: [tariffId], references: [id], onDelete: Cascade)
 }
 
 model MeterReading {
@@ -108,7 +108,7 @@ model MeterReading {
   batterySoc   Float     @default(0)
   homeDemandKw Float     @default(0)
   createdAt    DateTime  @default(now())
-  household    Household @relation(fields: [householdId], references: [id])
+  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([householdId])
 }
@@ -120,7 +120,7 @@ model Notification {
   message     String
   isRead      Boolean   @default(false)
   timestamp   DateTime  @default(now())
-  household   Household @relation(fields: [householdId], references: [id])
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([householdId])
 }
@@ -148,7 +148,7 @@ model OptimizationRun {
   baselineSolarUsage  Float?
   ruleBasedGridImport Float?
   ruleBasedSolarUsage Float?
-  household           Household  @relation(fields: [householdId], references: [id])
+  household           Household  @relation(fields: [householdId], references: [id], onDelete: Cascade)
   schedules           Schedule[]
 
   @@index([householdId])
@@ -172,8 +172,8 @@ model Schedule {
   originalStart  DateTime?
   reasonCategory String?
   appliance      Appliance        @relation(fields: [applianceId], references: [id])
-  household      Household        @relation(fields: [householdId], references: [id])
-  optimization   OptimizationRun? @relation(fields: [optimizationId], references: [id])
+  household      Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  optimization   OptimizationRun? @relation(fields: [optimizationId], references: [id], onDelete: Cascade)
 
   @@index([householdId])
 }

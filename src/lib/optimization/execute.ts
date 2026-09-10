@@ -13,9 +13,10 @@ export async function executeOptimizationRun() {
   const appliances = await prisma.appliance.findMany({ where: { householdId: household.id } });
   const tariff = await prisma.tariff.findFirst({
     where: { householdId: household.id, isActive: true },
-    include: { periods: true }
+    include: { periods: { orderBy: { startTime: 'asc' } } }
   });
   if (!tariff) throw new Error("Active tariff not found");
+  if (!tariff.periods || tariff.periods.length === 0) throw new Error("Active tariff has no tariff periods configured");
 
   const date = startOfDay(new Date());
   const startOpt = Date.now();

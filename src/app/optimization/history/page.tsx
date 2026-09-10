@@ -122,7 +122,7 @@ export default async function OptimizationHistoryPage() {
                                 <div key={s.id} className={`p-3 border rounded-md text-sm ${isError ? 'bg-destructive/5 border-destructive/20' : 'bg-card'}`}>
                                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
                                     <div className="font-medium flex items-center">
-                                      {s.appliance.name}
+                                      {s.appliance?.name || 'Unknown Appliance'}
                                       <span className={`ml-2 px-1.5 py-0.5 text-[9px] uppercase font-bold tracking-wider rounded ${isError ? 'bg-destructive/20 text-destructive' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'}`}>
                                         {s.reasonCategory}
                                       </span>

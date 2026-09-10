@@ -29,7 +29,9 @@ export default async function Home() {
         powerLimitKw={household.powerLimitKw} 
       />
 
-      <IntelligenceCenter />
+      <IntelligenceCenter 
+        initialPowerLimit={household.powerLimitKw} 
+      />
     </div>
   );
 }

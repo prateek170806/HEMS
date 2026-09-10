@@ -16,12 +16,16 @@ export const metadata: Metadata = {
 };
 
 import { ThemeProvider } from "@/components/theme-provider";
+import { getCurrentUser, getCurrentHousehold } from "@/lib/server/auth";
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user = await getCurrentUser();
+  const household = await getCurrentHousehold();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} min-h-screen flex flex-col md:flex-row bg-background`}>
@@ -32,7 +36,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider>
-            <Sidebar />
+            <Sidebar user={user} household={household} />
             <div className="flex flex-1 flex-col min-w-0">
               <Topbar />
               <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/20">

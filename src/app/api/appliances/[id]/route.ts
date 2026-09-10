@@ -38,6 +38,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     });
     
     revalidatePath("/appliances");
+    revalidatePath("/");
+    revalidatePath("/analytics/appliances");
+    revalidatePath("/simulation");
     
     return NextResponse.json(appliance);
   } catch {
@@ -54,9 +57,20 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     const existing = await prisma.appliance.findFirst({ where: { id, householdId: household.id } });
     if (!existing) return NextResponse.json({ error: 'Appliance not found' }, { status: 404 });
 
+    // Safely remove associated schedules first to maintain FK integrity
+    await prisma.schedule.deleteMany({
+      where: { applianceId: id, householdId: household.id }
+    });
+
     await prisma.appliance.delete({
       where: { id }
     });
+
+    revalidatePath("/appliances");
+    revalidatePath("/");
+    revalidatePath("/analytics/appliances");
+    revalidatePath("/simulation");
+
     return new NextResponse(null, { status: 204 });
   } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

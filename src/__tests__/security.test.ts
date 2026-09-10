@@ -127,6 +127,19 @@ describe('Phase 3 Security Remediation Tests', () => {
       expect(res.status).toBe(404);
       expect(prisma.appliance.delete).not.toHaveBeenCalled();
     });
+
+    it('DELETE /api/appliances/[id] should delete associated schedules before deleting appliance', async () => {
+      const mockHousehold = { id: 'hh-1' } as unknown as { id: string };
+      // @ts-expect-error Mocking household partial
+      vi.mocked(auth.getCurrentHousehold).mockResolvedValueOnce(mockHousehold);
+      // @ts-expect-error Mocking appliance lookup
+      vi.mocked(prisma.appliance.findFirst).mockResolvedValueOnce({ id: 'app-1', householdId: 'hh-1' });
+
+      const res = await DELETE_Appliance(new Request('http://localhost/api/appliances/app-1', { method: 'DELETE' }), { params: Promise.resolve({ id: 'app-1' }) });
+      expect(res.status).toBe(204);
+      expect(prisma.schedule.deleteMany).toHaveBeenCalledWith({ where: { applianceId: 'app-1', householdId: 'hh-1' } });
+      expect(prisma.appliance.delete).toHaveBeenCalledWith({ where: { id: 'app-1' } });
+    });
   });
 
   describe('Appliance Server Actions', () => {

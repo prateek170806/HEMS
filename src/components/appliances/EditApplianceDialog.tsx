@@ -43,6 +43,24 @@ export function EditApplianceDialog({ appliance }: { appliance: Appliance }) {
     automationEnabled: appliance.automationEnabled,
   });
 
+  const handleOpenChange = (isOpen: boolean) => {
+    if (isOpen) {
+      setFormData({
+        name: appliance.name,
+        ratedPower: appliance.ratedPower,
+        flexibility: appliance.flexibility,
+        minRuntime: appliance.minRuntime,
+        maxRuntime: appliance.maxRuntime,
+        earliestStart: appliance.earliestStart || "00:00",
+        latestFinish: appliance.latestFinish || "23:59",
+        priority: appliance.priority,
+        automationEnabled: appliance.automationEnabled,
+      });
+      setError(null);
+    }
+    setOpen(isOpen);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -78,10 +96,10 @@ export function EditApplianceDialog({ appliance }: { appliance: Appliance }) {
 
   return (
     <>
-      <Button variant="outline" size="sm" className="flex-1" onClick={() => setOpen(true)}>
+      <Button variant="outline" size="sm" className="flex-1" onClick={() => handleOpenChange(true)}>
         <Settings2 className="mr-2 h-4 w-4" /> Edit
       </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Edit Appliance</DialogTitle>

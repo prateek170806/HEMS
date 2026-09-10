@@ -16,8 +16,13 @@ export function RunOptimizationButton() {
     startTransition(async () => {
       try {
         const result = await runOptimizationAction();
-        setStatus("success");
-        setMessage(`Optimization complete — ${result.count} appliance${result.count !== 1 ? 's' : ''} scheduled.`);
+        if (result?.error) {
+          setStatus("error");
+          setMessage(result.error);
+        } else {
+          setStatus("success");
+          setMessage(`Optimization complete — ${result.count ?? 0} appliance${result.count !== 1 ? 's' : ''} scheduled.`);
+        }
       } catch (err: unknown) {
         setStatus("error");
         setMessage(err instanceof Error ? err.message : "Optimization failed. Check database connection.");

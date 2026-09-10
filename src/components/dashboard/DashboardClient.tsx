@@ -171,10 +171,10 @@ export function DashboardClient({ schedules, powerLimitKw }: { schedules: any[],
                   let bgClass = "bg-primary/10";
                   let textClass = "text-primary";
                   
-                  if (schedule.appliance.category === 'ev') {
+                  if (schedule.appliance?.category === 'ev') {
                      bgClass = "bg-amber-500/10";
                      textClass = "text-amber-600";
-                  } else if (schedule.appliance.category === 'water_heater' || schedule.appliance.category === 'battery') {
+                  } else if (schedule.appliance?.category === 'water_heater' || schedule.appliance?.category === 'battery') {
                      bgClass = "bg-emerald-500/10";
                      textClass = "text-emerald-600";
                   }
@@ -183,7 +183,7 @@ export function DashboardClient({ schedules, powerLimitKw }: { schedules: any[],
                     <div key={schedule.id} className="flex items-center">
                       <div className="w-16 text-sm font-medium text-muted-foreground">{timeStr}</div>
                       <div className={`flex-1 ${bgClass} rounded-md p-2`}>
-                        <p className="text-sm font-medium">{schedule.appliance.name}</p>
+                        <p className="text-sm font-medium">{schedule.appliance?.name || 'Unknown Appliance'}</p>
                         <p className={`text-xs ${textClass} flex justify-between`}>
                           <span>Scheduled</span>
                           <span>Est: ₹{schedule.estimatedCost?.toFixed(2) || '0.00'}</span>

@@ -20,7 +20,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (!scheduleToOverride) return NextResponse.json({ error: 'Schedule not found' }, { status: 404 });
 
       const now = new Date();
-      const endTime = new Date(now.getTime() + scheduleToOverride.appliance.minRuntime * 3600 * 1000);
+      const runtimeHours = scheduleToOverride.appliance?.minRuntime ?? 1;
+      const endTime = new Date(now.getTime() + runtimeHours * 3600 * 1000);
 
       const updated = await prisma.schedule.update({
         where: { id },

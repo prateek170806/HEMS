@@ -2,6 +2,7 @@ import { getCurrentHousehold } from "@/lib/server/auth";
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db';
 import { applianceSchema } from '@/lib/validations/appliance';
+import { revalidatePath } from 'next/cache';
 
 export async function GET() {
   try {
@@ -9,7 +10,8 @@ export async function GET() {
     if (!household) return NextResponse.json({ error: 'Household not found' }, { status: 404 });
 
     const appliances = await prisma.appliance.findMany({
-      where: { householdId: household.id }
+      where: { householdId: household.id },
+      orderBy: { createdAt: 'asc' }
     });
     return NextResponse.json(appliances);
   } catch {
@@ -32,6 +34,12 @@ export async function POST(req: Request) {
         householdId: household.id
       }
     });
+
+    revalidatePath("/appliances");
+    revalidatePath("/");
+    revalidatePath("/analytics/appliances");
+    revalidatePath("/simulation");
+
     return NextResponse.json(appliance, { status: 201 });
   } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

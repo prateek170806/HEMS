@@ -3,6 +3,15 @@
 import { auth } from "../../auth";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+const updateProfileSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Name must be at least 2 characters long")
+    .max(50, "Name must be less than 50 characters"),
+});
 
 export async function updateProfileAction(formData: FormData) {
   const session = await auth();
@@ -10,28 +19,42 @@ export async function updateProfileAction(formData: FormData) {
     return { error: "Unauthorized" };
   }
 
-  const name = formData.get("name") as string;
-  if (!name || name.trim() === "") {
-    return { error: "Name is required" };
+  const rawName = formData.get("name");
+  const validation = updateProfileSchema.safeParse({ name: rawName });
+
+  if (!validation.success) {
+    return { error: validation.error.issues[0]?.message || "Invalid name provided" };
   }
 
-  const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+  const { name } = validation.data;
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   try {
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
       data: {
         name,
         avatarInitials: initials,
-      }
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        customerId: true,
+        avatarInitials: true,
+      },
     });
 
-    // We shouldn't use unstable_update here if it's not supported in our version or we don't have access to the request object.
-    // Instead we'll rely on the session callback updating from the token, and we might need to force a client-side reload or revalidation.
     revalidatePath("/profile");
     revalidatePath("/");
-    
-    return { success: true };
+
+    return { success: true, user: updatedUser };
   } catch {
     return { error: "Failed to update profile" };
   }

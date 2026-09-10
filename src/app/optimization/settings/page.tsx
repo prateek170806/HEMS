@@ -11,6 +11,9 @@ function parseTime(baseDate: Date, timeStr: string): Date {
   return setMinutes(setHours(baseDate, hours), minutes);
 }
 
+import Link from "next/link";
+import { AlertCircle } from "lucide-react";
+
 export default async function SchedulesPage() {
   const household = await getCurrentHousehold();
   if (!household) return <div>No household configured.</div>;
@@ -34,17 +37,17 @@ export default async function SchedulesPage() {
   const today = new Date();
 
   const decisionLogs: DecisionLogProps['logs'] = schedules.map(s => {
-    const baselineTimeStr = s.appliance.earliestStart || '00:00';
+    const baselineTimeStr = s.appliance?.earliestStart || '00:00';
     const baselineDate = parseTime(today, baselineTimeStr);
     
     let baselineCost = 0;
-    if (tariff) {
-      baselineCost = getPriceForTime(tariff.periods, baselineDate) * s.appliance.minRuntime * s.appliance.ratedPower;
+    if (tariff && tariff.periods.length > 0 && s.appliance) {
+      baselineCost = getPriceForTime(tariff.periods, baselineDate) * (s.appliance.minRuntime ?? 0) * (s.appliance.ratedPower ?? 0);
     }
 
     return {
       scheduleId: s.id,
-      applianceName: s.appliance.name,
+      applianceName: s.appliance?.name || 'Unknown Appliance',
       baselineTime: baselineTimeStr,
       optimizedTime: s.startTime,
       baselineCost: baselineCost,
@@ -53,6 +56,8 @@ export default async function SchedulesPage() {
       isOverridden: s.status === "overridden"
     };
   });
+
+  const hasValidTariff = Boolean(tariff && tariff.periods && tariff.periods.length > 0);
 
   return (
     <div className="space-y-6">
@@ -64,6 +69,26 @@ export default async function SchedulesPage() {
           </p>
         </div>
       </div>
+
+      {!hasValidTariff && (
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold">Optimization Unavailable</p>
+              <p className="text-xs text-muted-foreground">
+                No active electricity tariff is configured for this household. Please configure a tariff to enable cost-aware scheduling.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/tariffs"
+            className="inline-flex items-center justify-center rounded-md text-xs font-medium bg-amber-600 text-white hover:bg-amber-700 px-3 py-2 shrink-0 transition-colors"
+          >
+            Configure Tariff
+          </Link>
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-6">

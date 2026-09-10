@@ -8,16 +8,21 @@ import { getCurrentHousehold, getCurrentUser } from "@/lib/server/auth";
 import { z } from "zod";
 
 export async function runOptimizationAction() {
+  try {
+    const result = await executeOptimizationRun();
 
-  const result = await executeOptimizationRun();
-
-  // 4. Revalidate UI
-  revalidatePath("/");
-  revalidatePath("/schedules");
-  revalidatePath("/analytics");
-  revalidatePath("/demo");
-  
-  return { success: true, count: result.schedules.length };
+    // Revalidate UI
+    revalidatePath("/");
+    revalidatePath("/schedules");
+    revalidatePath("/analytics");
+    revalidatePath("/demo");
+    revalidatePath("/optimization/settings");
+    
+    return { success: true, count: result.schedules.length };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Optimization failed";
+    return { error: message };
+  }
 }
 
 export async function overrideScheduleAction(applianceId: string) {
@@ -92,8 +97,8 @@ export async function resetDemoStateAction() {
       powerLimitKw: 5.5,
       batteryReserve: 20,
       optimizationMode: 'economic',
-      solarIrradiance: 800,
-      baseLoad: 0.5,
+      solarIrradiance: 50,
+      baseLoad: 10,
       simulationStatus: 'LIVE',
       simulationSpeed: 1,
       simulationTime: new Date(),

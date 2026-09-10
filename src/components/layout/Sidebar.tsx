@@ -40,7 +40,21 @@ const navGroups = [
   }
 ];
 
-export function Sidebar() {
+import { UserProfileWidget } from "@/components/layout/UserProfileWidget";
+
+interface SidebarProps {
+  user?: {
+    name?: string | null;
+    email?: string | null;
+    avatarInitials?: string | null;
+    customerId?: string | null;
+  } | null;
+  household?: {
+    name?: string | null;
+  } | null;
+}
+
+export function Sidebar({ user, household }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -78,18 +92,8 @@ export function Sidebar() {
           ))}
         </nav>
       </div>
-      <div className="mt-auto border-t p-4 hidden md:block">
-        <div className="flex items-center space-x-3">
-          <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-            <Home className="h-4 w-4 text-primary" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium leading-none truncate">Green Valley</p>
-            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span> Online
-            </p>
-          </div>
-        </div>
+      <div className="mt-auto border-t p-3 hidden md:block">
+        <UserProfileWidget user={user} household={household} />
       </div>
     </div>
   );
