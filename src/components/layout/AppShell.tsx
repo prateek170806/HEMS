@@ -2,6 +2,7 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface AppShellProps {
   sidebar: React.ReactNode;
@@ -15,7 +16,10 @@ export function AppShell({ sidebar, topbar, children }: AppShellProps) {
 
   if (isAuthRoute) {
     return (
-      <div className="min-h-screen w-full flex flex-col justify-center items-center bg-background selection:bg-primary selection:text-primary-foreground">
+      <div className="relative min-h-screen w-full flex flex-col justify-center items-center bg-background selection:bg-primary selection:text-primary-foreground p-4">
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20 rounded-full border border-border/60 bg-card/50 backdrop-blur-sm p-0.5 shadow-sm hover:border-border transition-colors">
+          <ThemeToggle />
+        </div>
         {children}
       </div>
     );
