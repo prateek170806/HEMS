@@ -15,7 +15,10 @@ import {
   Loader2,
   ArrowRight,
   ShieldCheck,
+  CheckCircle2,
 } from "lucide-react";
+
+type AuthMode = "login" | "register";
 
 interface AuthCardProps {
   initialMode?: "login" | "register";
@@ -23,23 +26,32 @@ interface AuthCardProps {
 
 export function AuthCard({ initialMode = "login" }: AuthCardProps) {
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "register">(initialMode);
+  const [mode, setMode] = useState<AuthMode>(
+    initialMode === "register" ? "register" : "login"
+  );
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Password visibility toggles
+  // Form State
+  const [email, setEmail] = useState("");
+
+  // Password visibility
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const switchMode = (newMode: "login" | "register") => {
+  const switchMode = (newMode: AuthMode) => {
     setMode(newMode);
     setError(null);
+    setSuccessMessage(null);
     if (typeof window !== "undefined") {
-      window.history.replaceState(null, "", newMode === "login" ? "/login" : "/register");
+      const urlPath = newMode === "register" ? "/register" : "/login";
+      window.history.replaceState(null, "", urlPath);
     }
   };
 
-  const handleLoginSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  // 1. Standard Email + Password Login
+  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     const formData = new FormData(e.currentTarget);
@@ -54,7 +66,8 @@ export function AuthCard({ initialMode = "login" }: AuthCardProps) {
     });
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  // 2. Registration (Name, Email, Password)
+  const handleRegister = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     const formData = new FormData(e.currentTarget);
@@ -62,12 +75,12 @@ export function AuthCard({ initialMode = "login" }: AuthCardProps) {
     const confirmPassword = formData.get("confirmPassword") as string;
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match. Please verify and try again.");
+      setError("Passwords do not match. Please verify.");
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long.");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long.");
       return;
     }
 
@@ -90,18 +103,18 @@ export function AuthCard({ initialMode = "login" }: AuthCardProps) {
           <Logo className="h-10 sm:h-12 w-auto" />
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-          {mode === "login" ? "Welcome back" : "Create an account"}
+          {mode === "register" ? "Create your account" : "Welcome Back"}
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground max-w-sm">
-          {mode === "login"
-            ? "Sign in to access your smart energy dashboard"
-            : "Join WattWise to monitor, simulate, and optimize your energy"}
+          {mode === "register"
+            ? "Join WattWise to monitor, simulate, and optimize energy"
+            : "Sign in to continue to HEMS"}
         </p>
       </div>
 
       {/* Auth Card Container */}
       <div className="bg-card text-card-foreground rounded-2xl border border-border/70 shadow-xl shadow-black/5 dark:shadow-black/25 p-6 sm:p-8 backdrop-blur-sm">
-        {/* Segmented Mode Switcher */}
+        {/* Top Mode Segmented Switcher (Sign In vs Register) */}
         <div className="grid grid-cols-2 p-1 mb-6 rounded-xl bg-muted/60 border border-border/50 text-sm font-medium">
           <button
             type="button"
@@ -138,15 +151,26 @@ export function AuthCard({ initialMode = "login" }: AuthCardProps) {
           </div>
         )}
 
-        {/* Login Form */}
+        {/* Success / Feedback Alert */}
+        {successMessage && !error && (
+          <div
+            role="status"
+            className="mb-5 flex items-start gap-3 p-3.5 rounded-xl text-sm bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 animate-in fade-in duration-200"
+          >
+            <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
+            <div className="flex-1 leading-snug">{successMessage}</div>
+          </div>
+        )}
+
+        {/* EMAIL + PASSWORD LOGIN FORM */}
         {mode === "login" && (
-          <form onSubmit={handleLoginSubmit} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label
                 htmlFor="login-email"
                 className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5"
               >
-                Email address
+                Email Address
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
@@ -158,6 +182,8 @@ export function AuthCard({ initialMode = "login" }: AuthCardProps) {
                   type="email"
                   autoComplete="email"
                   required
+                  defaultValue={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
                   className="block w-full rounded-xl border border-input bg-background/50 pl-10 pr-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
@@ -225,15 +251,15 @@ export function AuthCard({ initialMode = "login" }: AuthCardProps) {
                 onClick={() => switchMode("register")}
                 className="font-semibold text-primary hover:underline cursor-pointer"
               >
-                Register now
+                Register
               </button>
             </div>
           </form>
         )}
 
-        {/* Register Form */}
+        {/* REGISTRATION FORM (Name, Email, Password) */}
         {mode === "register" && (
-          <form onSubmit={handleRegisterSubmit} className="space-y-4">
+          <form onSubmit={handleRegister} className="space-y-4">
             <div>
               <label
                 htmlFor="register-name"
@@ -262,7 +288,7 @@ export function AuthCard({ initialMode = "login" }: AuthCardProps) {
                 htmlFor="register-email"
                 className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5"
               >
-                Email address
+                Email Address
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
@@ -297,7 +323,7 @@ export function AuthCard({ initialMode = "login" }: AuthCardProps) {
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
                   required
-                  placeholder="At least 6 characters"
+                  placeholder="Minimum 8 characters"
                   className="block w-full rounded-xl border border-input bg-background/50 pl-10 pr-10 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
                 <button
@@ -329,7 +355,7 @@ export function AuthCard({ initialMode = "login" }: AuthCardProps) {
                   type={showConfirmPassword ? "text" : "password"}
                   autoComplete="new-password"
                   required
-                  placeholder="Re-enter your password"
+                  placeholder="Repeat your password"
                   className="block w-full rounded-xl border border-input bg-background/50 pl-10 pr-10 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
                 <button
@@ -371,7 +397,7 @@ export function AuthCard({ initialMode = "login" }: AuthCardProps) {
                 onClick={() => switchMode("login")}
                 className="font-semibold text-primary hover:underline cursor-pointer"
               >
-                Sign in
+                Login
               </button>
             </div>
           </form>

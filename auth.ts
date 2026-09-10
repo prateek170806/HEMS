@@ -3,38 +3,41 @@ import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { z } from "zod";
 
 export const { auth, signIn, signOut, handlers, unstable_update: update } = NextAuth({
   ...authConfig,
   providers: [
     Credentials({
-      name: "credentials",
+      id: "credentials",
+      name: "Email and Password",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const parsedCredentials = z
-          .object({ email: z.string().email(), password: z.string().min(6) })
-          .safeParse(credentials);
+        const creds = credentials as Record<string, string | undefined>;
+        const rawEmail = creds?.email;
+        const password = creds?.password;
 
-        if (parsedCredentials.success) {
-          const { email, password } = parsedCredentials.data;
-          const user = await prisma.user.findUnique({ where: { email } });
-          
-          if (!user) return null;
+        if (!rawEmail || !password) return null;
 
-          const passwordsMatch = await bcrypt.compare(password, user.passwordHash);
+        const email = rawEmail.toLowerCase().trim();
 
-          if (passwordsMatch) {
-            return {
-              id: user.id,
-              name: user.name,
-              email: user.email,
-              image: user.avatarInitials, // Mapped for session object convenience
-            };
-          }
+        const user = await prisma.user.findFirst({
+          where: { email },
+        });
+
+        if (!user) return null;
+
+        const passwordsMatch = await bcrypt.compare(password, user.passwordHash);
+
+        if (passwordsMatch) {
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            image: user.avatarInitials,
+          };
         }
 
         return null;

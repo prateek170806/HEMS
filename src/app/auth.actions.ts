@@ -8,18 +8,27 @@ import { TariffRepository } from "@/lib/server/repositories/tariff.repository";
 
 export async function loginAction(formData: FormData) {
   try {
+    const rawEmail = (formData.get("email") || formData.get("identifier")) as string;
+    const password = formData.get("password") as string;
+
+    if (!rawEmail || !password) {
+      return { error: "Please enter your email and password." };
+    }
+
+    const email = rawEmail.trim().toLowerCase();
+
     await signIn("credentials", {
-      email: formData.get("email"),
-      password: formData.get("password"),
+      email,
+      password,
       redirectTo: "/",
     });
   } catch (error) {
     if (error instanceof AuthError) {
       switch (error.type) {
         case "CredentialsSignin":
-          return { error: "Invalid credentials." };
+          return { error: "Invalid email or password." };
         default:
-          return { error: "Something went wrong." };
+          return { error: "Something went wrong during sign in." };
       }
     }
     throw error;
@@ -28,18 +37,35 @@ export async function loginAction(formData: FormData) {
 
 export async function registerAction(formData: FormData) {
   try {
-    const name = formData.get("name") as string;
-    const email = formData.get("email") as string;
+    const name = (formData.get("name") as string)?.trim();
+    const rawEmail = formData.get("email") as string;
     const password = formData.get("password") as string;
     const confirmPassword = formData.get("confirmPassword") as string;
 
-    if (!name || !email || !password || password !== confirmPassword) {
-      return { error: "Invalid form data or passwords do not match." };
+    if (!name || !rawEmail || !password || !confirmPassword) {
+      return { error: "All fields are required." };
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const email = rawEmail.trim().toLowerCase();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { error: "Please enter a valid email address." };
+    }
+
+    if (password !== confirmPassword) {
+      return { error: "Passwords do not match. Please verify." };
+    }
+
+    if (password.length < 8) {
+      return { error: "Password must be at least 8 characters long." };
+    }
+
+    const existingUser = await prisma.user.findFirst({
+      where: { email },
+    });
+
     if (existingUser) {
-      return { error: "Email is already in use." };
+      return { error: "An account with this email address already exists." };
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -51,7 +77,7 @@ export async function registerAction(formData: FormData) {
         name,
         email,
         passwordHash,
-        avatarInitials: initials,
+        avatarInitials: initials || "WW",
         customerId,
       },
     });
@@ -65,7 +91,7 @@ export async function registerAction(formData: FormData) {
         currency: "INR",
         powerLimitKw: 5.5,
         batteryReserve: 20,
-      }
+      },
     });
 
     // Create default active Time-of-Use tariff for the household
@@ -78,7 +104,7 @@ export async function registerAction(formData: FormData) {
     });
   } catch (error) {
     if (error instanceof AuthError) {
-      return { error: "Something went wrong during sign in." };
+      return { error: "Something went wrong during registration sign in." };
     }
     throw error;
   }

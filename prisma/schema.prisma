@@ -12,6 +12,7 @@ model User {
   customerId     String      @unique
   name           String
   email          String      @unique
+  phone          String?     @unique
   passwordHash   String
   avatarInitials String?
   createdAt      DateTime    @default(now())
@@ -177,3 +178,29 @@ model Schedule {
 
   @@index([householdId])
 }
+
+model EmailOTP {
+  id        String   @id @default(uuid())
+  email     String
+  otpHash   String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model OtpVerification {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  attempts  Int      @default(0)
+  verified  Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+}
+
+
