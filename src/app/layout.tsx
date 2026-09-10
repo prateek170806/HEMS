@@ -4,6 +4,9 @@ import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
+import { AppShell } from "@/components/layout/AppShell";
+import { ThemeProvider } from "@/components/theme-provider";
+import { getCurrentUser, getCurrentHousehold } from "@/lib/server/auth";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -15,9 +18,6 @@ export const metadata: Metadata = {
   },
 };
 
-import { ThemeProvider } from "@/components/theme-provider";
-import { getCurrentUser, getCurrentHousehold } from "@/lib/server/auth";
-
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -28,7 +28,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} min-h-screen flex flex-col md:flex-row bg-background`}>
+      <body className={`${inter.className} min-h-screen bg-background`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -36,16 +36,16 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider>
-            <Sidebar user={user} household={household} />
-            <div className="flex flex-1 flex-col min-w-0">
-              <Topbar />
-              <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/20">
-                {children}
-              </main>
-            </div>
+            <AppShell
+              sidebar={<Sidebar user={user} household={household} />}
+              topbar={<Topbar />}
+            >
+              {children}
+            </AppShell>
           </TooltipProvider>
         </ThemeProvider>
       </body>
     </html>
   );
 }
+
