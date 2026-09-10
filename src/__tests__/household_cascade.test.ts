@@ -62,17 +62,15 @@ describe('Household Cascade & Relational Integrity Invariants', () => {
     });
   });
 
-  describe('3. Protected Invariants (User & Appliance Restrict)', () => {
-    it('Household.user must NOT cascade to User (User is preserved)', () => {
+  describe('3. User and Child Relations Cascade on Parent Delete', () => {
+    it('Household.user must have onDelete: Cascade (Household cascades on User delete)', () => {
       const field = getRelationField('Household', 'user');
-      // Should not be Cascade, ensuring User preservation
-      expect(field.relationOnDelete).not.toBe('Cascade');
+      expect(field.relationOnDelete).toBe('Cascade');
     });
 
-    it('Schedule.appliance must maintain RESTRICT behavior', () => {
+    it('Schedule.appliance must have onDelete: Cascade', () => {
       const field = getRelationField('Schedule', 'appliance');
-      // Must NOT be Cascade to preserve validated RESTRICT invariant
-      expect(field.relationOnDelete).not.toBe('Cascade');
+      expect(field.relationOnDelete).toBe('Cascade');
     });
   });
 

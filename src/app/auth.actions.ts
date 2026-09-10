@@ -1,6 +1,6 @@
 "use server";
 
-import { signIn, signOut } from "../../auth";
+import { auth, signIn, signOut } from "../../auth";
 import { AuthError } from "next-auth";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
@@ -112,4 +112,99 @@ export async function registerAction(formData: FormData) {
 
 export async function logoutAction() {
   await signOut({ redirectTo: "/login" });
+}
+
+export async function deleteUserById(userId: string) {
+  try {
+    if (!userId || typeof userId !== "string") {
+      return { success: false, error: "Invalid user ID provided." };
+    }
+
+    return await prisma.$transaction(async (tx) => {
+      // Find user first to ensure existence
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        include: {
+          households: {
+            select: { id: true },
+          },
+        },
+      });
+
+      if (!user) {
+        return {
+          success: false,
+          code: "P2025",
+          error: "User record not found or already deleted.",
+        };
+      }
+
+      // Explicit transactional cascade cleanup if needed
+      for (const household of user.households) {
+        await tx.schedule.deleteMany({ where: { householdId: household.id } });
+        await tx.optimizationRun.deleteMany({ where: { householdId: household.id } });
+        await tx.meterReading.deleteMany({ where: { householdId: household.id } });
+        await tx.notification.deleteMany({ where: { householdId: household.id } });
+        
+        const tariffs = await tx.tariff.findMany({ where: { householdId: household.id } });
+        if (tariffs.length > 0) {
+          const tariffIds = tariffs.map((t) => t.id);
+          await tx.tariffPeriod.deleteMany({ where: { tariffId: { in: tariffIds } } });
+          await tx.tariff.deleteMany({ where: { householdId: household.id } });
+        }
+
+        await tx.appliance.deleteMany({ where: { householdId: household.id } });
+        await tx.household.delete({ where: { id: household.id } });
+      }
+
+      // Delete the User record
+      await tx.user.delete({
+        where: { id: userId },
+      });
+
+      return { success: true, message: "User account and all associated data deleted successfully." };
+    });
+  } catch (error: unknown) {
+    if (error && typeof error === "object" && "code" in error) {
+      const prismaError = error as { code: string; message: string; meta?: Record<string, unknown> };
+      if (prismaError.code === "P2025") {
+        return {
+          success: false,
+          code: "P2025",
+          error: "Record to delete does not exist.",
+        };
+      }
+      if (prismaError.code === "P2003") {
+        return {
+          success: false,
+          code: "P2003",
+          error: "Foreign key constraint failed on related child records during user deletion.",
+        };
+      }
+    }
+    const msg = error instanceof Error ? error.message : "Failed to delete user account.";
+    console.error("[deleteUserById Error]:", error);
+    return {
+      success: false,
+      error: msg,
+    };
+  }
+}
+
+export async function deleteUserAccountAction() {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized: No active session." };
+    }
+
+    const result = await deleteUserById(session.user.id);
+    if (result.success) {
+      await signOut({ redirectTo: "/login" });
+    }
+    return result;
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to delete user account.";
+    return { success: false, error: msg };
+  }
 }

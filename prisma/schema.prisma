@@ -23,7 +23,7 @@ model User {
 model Household {
   id                String            @id @default(uuid())
   userId            String            @unique
-  user              User              @relation(fields: [userId], references: [id])
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   name              String
   timezone          String            @default("Asia/Kolkata")
   currency          String            @default("INR")
@@ -172,7 +172,7 @@ model Schedule {
   originalEnd    DateTime?
   originalStart  DateTime?
   reasonCategory String?
-  appliance      Appliance        @relation(fields: [applianceId], references: [id])
+  appliance      Appliance        @relation(fields: [applianceId], references: [id], onDelete: Cascade)
   household      Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
   optimization   OptimizationRun? @relation(fields: [optimizationId], references: [id], onDelete: Cascade)
 
